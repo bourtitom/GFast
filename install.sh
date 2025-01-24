@@ -53,6 +53,7 @@ download_from_github() {
     echo "Téléchargement depuis $repo_url..."
     if git clone --depth 1 "$repo_url" "$TEMP_DIR/repo"; then
         success "Téléchargement réussi ✓"
+        cd "$TEMP_DIR/repo" || exit 1
     else
         error "Impossible de télécharger depuis GitHub"
         exit 1
@@ -100,9 +101,7 @@ install_script() {
     local script_path="/usr/local/bin/gf"
     
     # Copier le script
-    if [ -f "gfast" ]; then
-        sudo cp gfast "$script_path"
-    fi
+    sudo cp gfast "$script_path"
     sudo chmod +x "$script_path"
     
     success "Script installé dans $script_path ✓"
@@ -111,40 +110,8 @@ install_script() {
 # Installer la documentation
 install_docs() {
     local doc_path="/usr/local/share/doc/gfast"
-    
-    # Créer la documentation
-    cat > README.md << 'EOL'
-# GFast - Script d'automatisation Git
-
-GFast est un script shell interactif qui simplifie et standardise le processus de commit et de push Git.
-
-## Utilisation
-
-Simplement exécuter :
-```bash
-gf
-```
-
-Pour plus d'informations, visitez : https://github.com/bourtitom/GFast
-EOL
-    
     sudo cp README.md "$doc_path/"
     success "Documentation installée dans $doc_path ✓"
-}
-
-# Configurer le PATH si nécessaire
-configure_path() {
-    local shell_rc
-    case "$SHELL" in
-        */zsh) shell_rc="$HOME/.zshrc" ;;
-        */bash) shell_rc="$HOME/.bashrc" ;;
-        *) warning "Shell non reconnu. Ajoutez manuellement /usr/local/bin à votre PATH" ; return ;;
-    esac
-
-    if ! grep -q '/usr/local/bin' "$shell_rc"; then
-        echo 'export PATH="/usr/local/bin:$PATH"' >> "$shell_rc"
-        success "PATH configuré dans $shell_rc ✓"
-    fi
 }
 
 # Fonction de désinstallation
