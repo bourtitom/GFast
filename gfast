@@ -43,7 +43,7 @@ function print_logo() {
     echo -e "${CYAN}║${NC}  ${BOLD}${BLUE}/ ____/____/ __/ /_  ____ _/ /_${NC}        ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC} ${BOLD}${BLUE}/ / __/ ___/ /_/ __ \/ __ \`/ __/${NC}        ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}${BOLD}${BLUE}/ /_/ / /  / __/ /_/ / /_/ / /_${NC}          ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}${BOLD}${BLUE}\____/_/  /_/ /_.___/\__,_/\__/${NC}   ${GREEN}by Tom${NC}  ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}${BOLD}${BLUE}\____/_/  /_/ /_.___/\__,_/\__/${NC}   ${GREEN}by Tom${NC}    ${CYAN}║${NC}"
     echo -e "${CYAN}║${NC}$(printf ' %.0s' $(seq 1 $width))${CYAN}║${NC}"
     echo -e "${CYAN}╚$(printf '═%.0s' $(seq 1 $width))╝${NC}"
     echo
