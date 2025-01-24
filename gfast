@@ -753,7 +753,7 @@ function manage_ssh() {
 
 # Fonction pour afficher l'aide rapide
 function show_quick_help() {
-    cat << EOF
+    echo -e "
 ${WHITE}${BOLD}GFast - Commandes rapides${NC}
 
 ${CYAN}${BOLD}Usage :${NC} gf [commande] [options]
@@ -763,17 +763,16 @@ ${CYAN}${BOLD}Commandes :${NC}
   ${GREEN}-i, --init${NC}     Initialiser un dépôt Git
   ${GREEN}-c, --clone${NC}    Cloner un dépôt (ex: gf -c URL)
   ${GREEN}-a, --add${NC}      Ajouter tous les fichiers
-  ${GREEN}-cm${NC}           Commit rapide (ex: gf -cm "message")
+  ${GREEN}-cm${NC}           Commit rapide (ex: gf -cm \"message\")
   ${GREEN}-p, --push${NC}     Push les changements
   ${GREEN}-s, --sync${NC}     Pull puis Push
   ${GREEN}-b${NC}            Créer et changer de branche (ex: gf -b nom_branche)
   ${GREEN}-m${NC}            Menu interactif complet
 
 ${CYAN}${BOLD}Exemples :${NC}
-  gf -a -cm "fix: correction de bug" -p    Ajouter, commit et push
-  gf -s                                    Synchroniser (pull + push)
-  gf -b feature/new                        Créer et aller sur une nouvelle branche
-EOF
+  ${YELLOW}gf -a -cm \"fix: correction de bug\" -p${NC}    Ajouter, commit et push
+  ${YELLOW}gf -s${NC}                                    Synchroniser (pull + push)
+  ${YELLOW}gf -b feature/new${NC}                        Créer et aller sur une nouvelle branche"
 }
 
 # Fonction pour faire un commit rapide
