@@ -1,19 +1,33 @@
 #!/bin/bash
 
-# Logo ASCII
-echo '
-   ______     ______           __
-  / ____/____/ __/ /_  ____ _/ /_
- / / __/ ___/ /_/ __ \/ __ `/ __/
-/ /_/ / /  / __/ /_/ / /_/ / /_
-\____/_/  /_/ /_.___/\__,_/\__/   by Tom
-'
-
 # Couleurs pour les messages
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+BLUE='\033[0;34m'
+MAGENTA='\033[0;35m'
+CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+# Logo ASCII avec couleurs et cadre
+function print_logo() {
+    local width=45
+    echo -e "${CYAN}╔$(printf '═%.0s' $(seq 1 $width))╗${NC}"
+    echo -e "${CYAN}║${NC}$(printf ' %.0s' $(seq 1 $width))${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}   ${BOLD}${BLUE}______     ______           __${NC}         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}  ${BOLD}${BLUE}/ ____/____/ __/ /_  ____ _/ /_${NC}        ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC} ${BOLD}${BLUE}/ / __/ ___/ /_/ __ \/ __ \`/ __/${NC}        ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}${BOLD}${BLUE}/ /_/ / /  / __/ /_/ / /_/ / /_${NC}          ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}${BOLD}${BLUE}\____/_/  /_/ /_.___/\__,_/\__/${NC}   ${GREEN}by Tom${NC}  ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}$(printf ' %.0s' $(seq 1 $width))${CYAN}║${NC}"
+    echo -e "${CYAN}╚$(printf '═%.0s' $(seq 1 $width))╝${NC}"
+    echo
+}
+
+# Afficher le logo au démarrage
+print_logo
 
 # Fonction pour afficher les messages d'erreur
 function error_msg() {
