@@ -456,7 +456,9 @@ function show_main_menu() {
         print_menu_option "5" "Synchroniser (push/pull)"
         print_menu_option "6" "Voir l'historique"
         print_menu_option "7" "Configuration Git"
-        print_menu_option "8" "Aide"
+        print_menu_option "8" "Gérer les stash"
+        print_menu_option "9" "Gérer les clés SSH"
+        print_menu_option "h" "Aide"
         print_menu_option "q" "Quitter"
         echo
 
@@ -469,7 +471,9 @@ function show_main_menu() {
             5) sync_changes ;;
             6) view_history ;;
             7) configure_git ;;
-            8) show_help ;;
+            8) manage_stash ;;
+            9) manage_ssh ;;
+            h|H) show_help ;;
             q|Q) exit 0 ;;
             *) error_msg "Option invalide" ;;
         esac
@@ -613,6 +617,138 @@ ${GREEN}${BOLD}Pour plus d'aide :${NC}
 • Documentation Git : https://git-scm.com/doc
 • Guide Git : https://git-scm.com/book
 EOF
+}
+
+# Fonction pour gérer les stash
+function manage_stash() {
+    print_section_title "Gestion des Stash"
+    echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+    print_menu_option "1" "Voir la liste des stash"
+    print_menu_option "2" "Créer un nouveau stash"
+    print_menu_option "3" "Appliquer un stash"
+    print_menu_option "4" "Supprimer un stash"
+    print_menu_option "5" "Voir le contenu d'un stash"
+    print_menu_option "r" "Retour"
+    echo
+
+    read_input "Choisissez une option" choice
+    case $choice in
+        1) 
+            echo -e "\n${WHITE}${BOLD}Liste des stash :${NC}"
+            git stash list
+            ;;
+        2)
+            read_input "Message pour le stash (optionnel)" message
+            if [ $? -eq 0 ]; then
+                if [ -n "$message" ]; then
+                    git stash push -m "$message"
+                else
+                    git stash push
+                fi
+                success_msg "Stash créé avec succès"
+            fi
+            ;;
+        3)
+            echo -e "\n${WHITE}${BOLD}Liste des stash :${NC}"
+            git stash list
+            read_input "Index du stash à appliquer (ex: 0 pour stash@{0})" index
+            if [ $? -eq 0 ]; then
+                git stash apply "stash@{$index}"
+                success_msg "Stash appliqué avec succès"
+            fi
+            ;;
+        4)
+            echo -e "\n${WHITE}${BOLD}Liste des stash :${NC}"
+            git stash list
+            read_input "Index du stash à supprimer (ex: 0 pour stash@{0})" index
+            if [ $? -eq 0 ]; then
+                git stash drop "stash@{$index}"
+                success_msg "Stash supprimé avec succès"
+            fi
+            ;;
+        5)
+            echo -e "\n${WHITE}${BOLD}Liste des stash :${NC}"
+            git stash list
+            read_input "Index du stash à voir (ex: 0 pour stash@{0})" index
+            if [ $? -eq 0 ]; then
+                git stash show -p "stash@{$index}"
+            fi
+            ;;
+        r|R) return 0 ;;
+        *) error_msg "Option invalide" ;;
+    esac
+}
+
+# Fonction pour gérer les clés SSH
+function manage_ssh() {
+    print_section_title "Gestion des Clés SSH"
+    echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+    print_menu_option "1" "Lister les clés SSH"
+    print_menu_option "2" "Générer une nouvelle clé SSH"
+    print_menu_option "3" "Ajouter une clé à l'agent SSH"
+    print_menu_option "4" "Copier une clé publique"
+    print_menu_option "5" "Tester la connexion SSH"
+    print_menu_option "r" "Retour"
+    echo
+
+    read_input "Choisissez une option" choice
+    case $choice in
+        1)
+            echo -e "\n${WHITE}${BOLD}Clés SSH existantes :${NC}"
+            ls -l ~/.ssh/*.pub 2>/dev/null || echo "Aucune clé publique trouvée"
+            ;;
+        2)
+            read_input "Votre email" email
+            if [ $? -eq 0 ]; then
+                read_input "Nom du fichier de clé (ex: id_ed25519)" keyname
+                if [ $? -eq 0 ]; then
+                    # Utiliser Ed25519 par défaut (plus sécurisé que RSA)
+                    ssh-keygen -t ed25519 -C "$email" -f ~/.ssh/"$keyname"
+                    success_msg "Clé SSH générée avec succès"
+                    
+                    # Démarrer l'agent SSH si nécessaire
+                    eval "$(ssh-agent -s)"
+                    ssh-add ~/.ssh/"$keyname"
+                    
+                    # Afficher la clé publique
+                    echo -e "\n${WHITE}${BOLD}Votre clé publique :${NC}"
+                    cat ~/.ssh/"$keyname".pub
+                fi
+            fi
+            ;;
+        3)
+            echo -e "\n${WHITE}${BOLD}Clés SSH disponibles :${NC}"
+            ls -l ~/.ssh/*pub 2>/dev/null
+            read_input "Nom du fichier de clé privée à ajouter" keyfile
+            if [ $? -eq 0 ]; then
+                eval "$(ssh-agent -s)"
+                ssh-add ~/.ssh/"$keyfile"
+                success_msg "Clé ajoutée à l'agent SSH"
+            fi
+            ;;
+        4)
+            echo -e "\n${WHITE}${BOLD}Clés publiques disponibles :${NC}"
+            ls -l ~/.ssh/*.pub 2>/dev/null
+            read_input "Nom du fichier de clé publique à copier" keyfile
+            if [ $? -eq 0 ] && [ -f ~/.ssh/"$keyfile" ]; then
+                if command -v pbcopy >/dev/null; then
+                    cat ~/.ssh/"$keyfile" | pbcopy
+                    success_msg "Clé copiée dans le presse-papier"
+                else
+                    echo -e "\n${WHITE}${BOLD}Votre clé publique :${NC}"
+                    cat ~/.ssh/"$keyfile"
+                fi
+            fi
+            ;;
+        5)
+            read_input "Hôte SSH à tester (ex: github.com)" host
+            if [ $? -eq 0 ]; then
+                ssh -T git@"$host"
+            fi
+            ;;
+        r|R) return 0 ;;
+        *) error_msg "Option invalide" ;;
+    esac
 }
 
 # Fonction principale modifiée
