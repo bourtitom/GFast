@@ -58,100 +58,92 @@ EOL
 
 # Fonction pour cloner un repository
 function clone_repository() {
-    echo "Voulez-vous cloner un repository ?"
-    echo "1. Oui"
-    echo "2. Non [défaut]"
-    read_input "Choisissez une option (1/2)" do_clone
+    read_input "Entrez l'URL du repository à cloner" clone_url
     if [ $? -eq 1 ]; then
         return 1
     fi
     
-    do_clone=${do_clone:-2}
-    if [ "$do_clone" = "1" ]; then
-        read_input "Entrez l'URL du repository à cloner" clone_url
-        if [ $? -eq 1 ]; then
-            return 1
-        fi
-        
-        git clone "$clone_url" .
-        if ! check_command "Impossible de cloner le repository."; then
-            return 1
-        fi
-        success_msg "Repository cloné avec succès."
-        create_gitignore
-        return 0
+    git clone "$clone_url" .
+    if ! check_command "Impossible de cloner le repository."; then
+        return 1
     fi
-    return 2
+    success_msg "Repository cloné avec succès."
+    create_gitignore
+    return 0
 }
 
 # Fonction pour initialiser Git si nécessaire
 function init_git() {
-    if [ ! -d ".git" ]; then
-        echo "Voulez-vous initialiser Git ?"
+    echo "Initialisation du dépôt Git..."
+    git init
+    if ! check_command "Impossible d'initialiser le dépôt Git."; then
+        return 1
+    fi
+    success_msg "Dépôt Git initialisé avec succès."
+    
+    # Créer le .gitignore
+    create_gitignore
+    
+    while true; do
+        echo "Voulez-vous configurer un remote ?"
         echo "1. Oui [défaut]"
         echo "2. Non"
-        read_input "Choisissez une option (1/2)" do_init
+        read_input "Choisissez une option (1/2)" config_remote
         if [ $? -eq 1 ]; then
             return 1
         fi
         
-        do_init=${do_init:-1}
-        if [ "$do_init" = "1" ]; then
-            echo "Initialisation du dépôt Git..."
-            git init
-            if ! check_command "Impossible d'initialiser le dépôt Git."; then
-                return 1
+        config_remote=${config_remote:-1}
+        
+        if [ "$config_remote" = "1" ]; then
+            read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
+            if [ $? -eq 1 ]; then
+                continue
             fi
-            success_msg "Dépôt Git initialisé avec succès."
             
-            # Créer le .gitignore
-            create_gitignore
-            
-            while true; do
-                echo "Voulez-vous configurer un remote ?"
-                echo "1. Oui [défaut]"
+            # Vérifier si le remote existe déjà
+            if git remote | grep -q "^origin$"; then
+                warning_msg "Le remote 'origin' existe déjà."
+                echo "Voulez-vous le remplacer ?"
+                echo "1. Oui"
                 echo "2. Non"
-                read_input "Choisissez une option (1/2)" config_remote
+                read_input "Choisissez une option (1/2)" replace_remote
                 if [ $? -eq 1 ]; then
-                    return 1
+                    continue
                 fi
-                config_remote=${config_remote:-1}
-                
-                if [ "$config_remote" = "1" ]; then
-                    read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
-                    if [ $? -eq 1 ]; then
-                        continue
-                    fi
-                    
-                    # Vérifier si le remote existe déjà
-                    if git remote | grep -q "^origin$"; then
-                        warning_msg "Le remote 'origin' existe déjà."
-                        echo "Voulez-vous le remplacer ?"
-                        echo "1. Oui"
-                        echo "2. Non"
-                        read_input "Choisissez une option (1/2)" replace_remote
-                        if [ $? -eq 1 ]; then
-                            continue
-                        fi
-                        if [ "$replace_remote" = "1" ]; then
-                            git remote remove origin
-                        else
-                            continue
-                        fi
-                    fi
-                    
-                    git remote add origin "$remote_url"
-                    if ! check_command "Impossible d'ajouter le remote."; then
-                        continue
-                    fi
-                    success_msg "Remote configuré avec succès."
+                if [ "$replace_remote" = "1" ]; then
+                    git remote remove origin
+                else
+                    continue
                 fi
-                break
-            done
-        else
-            error_msg "Un dépôt Git est nécessaire pour continuer."
-            return 1
+            fi
+            
+            git remote add origin "$remote_url"
+            if ! check_command "Impossible d'ajouter le remote."; then
+                continue
+            fi
+            success_msg "Remote configuré avec succès."
         fi
+        break
+    done
+    return 0
+}
+
+# Fonction pour gérer l'initialisation ou le clonage
+function setup_git() {
+    echo "Que souhaitez-vous faire ?"
+    echo "1. Cloner un repository"
+    echo "2. Initialiser un nouveau dépôt Git [défaut]"
+    read_input "Choisissez une option (1/2)" choice
+    if [ $? -eq 1 ]; then
+        return 1
+    fi
+    
+    choice=${choice:-2}
+    if [ "$choice" = "1" ]; then
+        clone_repository
+    else
+        init_git
     fi
     return 0
 }
@@ -382,20 +374,13 @@ function is_directory_empty() {
 function main() {
     # Vérifier si le répertoire est vide (en ignorant .git)
     if is_directory_empty; then
-        # Si le répertoire est vide, proposer de cloner
-        clone_repository
-        clone_result=$?
-        if [ $clone_result -eq 1 ]; then
+        # Si le répertoire est vide, proposer de cloner ou d'initialiser
+        if ! setup_git; then
             return 1
-        elif [ $clone_result -eq 2 ]; then
-            # Si l'utilisateur ne veut pas cloner, initialiser Git
-            if ! init_git; then
-                return 1
-            fi
         fi
-    else
-        # Si le répertoire n'est pas vide, initialiser Git si nécessaire
-        if ! init_git; then
+    elif [ ! -d ".git" ]; then
+        # Si le répertoire n'est pas vide mais pas de .git, proposer d'initialiser
+        if ! setup_git; then
             return 1
         fi
     fi
