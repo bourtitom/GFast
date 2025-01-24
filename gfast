@@ -199,26 +199,28 @@ function choose_commit_type() {
             5) type="refactor" ;;
             6) type="test" ;;
             7) type="chore" ;;
-            *) 
-                error_msg "Option invalide."
-                continue
-                ;;
+            *) error_msg "Option invalide." ; continue ;;
         esac
-
-        read_input "Entrez le nom de la fonctionnalité/scope" scope
+        
+        read_input "Entrez le scope (optionnel, appuyez sur Entrée pour ignorer)" scope
         if [ $? -eq 1 ]; then
-            continue
+            return 1
         fi
         
-        # Vérifier que le scope n'est pas vide
-        if [ -z "$scope" ]; then
-            error_msg "Le scope ne peut pas être vide."
-            continue
+        read_input "Entrez la description du commit" description
+        if [ $? -eq 1 ]; then
+            return 1
         fi
         
-        break
+        # Construire le message de commit
+        if [ -n "$scope" ]; then
+            commit_msg="$type($scope) $description"
+        else
+            commit_msg="$type: $description"
+        fi
+        
+        return 0
     done
-    return 0
 }
 
 # Fonction pour commit
@@ -227,38 +229,25 @@ function commit_changes() {
     if ! check_staged; then
         return 1
     fi
-
-    while true; do
-        choose_commit_type
-        if [ $? -eq 1 ]; then
-            return 1
-        fi
-
-        read_input "Entrez une description pour votre commit" description
-        if [ $? -eq 1 ]; then
-            continue
-        fi
-        
-        # Vérifier que la description n'est pas vide
-        if [ -z "$description" ]; then
-            error_msg "La description ne peut pas être vide."
-            continue
-        fi
-
-        commit_message="$type($scope) $description"
-        git commit -m "$commit_message"
-        if ! check_command "Impossible de créer le commit."; then
-            continue
-        fi
-        success_msg "Commit effectué : $commit_message"
-        break
-    done
+    
+    # Choisir le type de commit et construire le message
+    if ! choose_commit_type; then
+        return 1
+    fi
+    
+    # Effectuer le commit
+    git commit -m "$commit_msg"
+    if ! check_command "Impossible de créer le commit."; then
+        return 1
+    fi
+    
+    success_msg "Commit créé avec succès."
     return 0
 }
 
 # Fonction pour vérifier si le remote existe
 function check_remote() {
-    if ! git remote get-url origin >/dev/null 2>&1; then
+    if ! git remote | grep -q "^origin$"; then
         error_msg "Aucun remote 'origin' configuré."
         return 1
     fi
@@ -270,108 +259,79 @@ function push_changes() {
     # Vérifier si le remote existe
     if ! check_remote; then
         return 1
-    }
-
-    # Vérifier s'il y a des commits à pousser
-    if [ -z "$(git log @{u}..@ 2>/dev/null)" ]; then
-        warning_msg "Aucun commit à pousser."
-        return 0
     fi
-
+    
     while true; do
-        read_input "Voulez-vous push vos changements ? (oui/non) [oui]" push_option
-        if [ $? -eq 1 ]; then
-            return 1
-        fi
-        push_option=${push_option:-oui}
-
-        if [ "$push_option" = "oui" ]; then
-            # Tenter de push
-            git push 2>/tmp/git_push_error
-            if ! check_command "$(cat /tmp/git_push_error)"; then
-                warning_msg "Erreur lors du push. Voulez-vous :"
-                echo "1. Réessayer"
-                echo "2. Pull puis Push"
-                echo "3. Force Push (DANGER)"
-                read_input "Choisissez une option (1/2/3)" error_option
-                if [ $? -eq 1 ]; then
-                    continue
-                fi
-                
-                case $error_option in
-                    1) continue ;;
-                    2)
-                        git pull --rebase
-                        if ! check_command "Impossible de pull les changements."; then
-                            continue
-                        fi
-                        git push
-                        if ! check_command "Impossible de push après le pull."; then
-                            continue
-                        fi
-                        ;;
-                    3)
-                        warning_msg "Le force push est dangereux et peut écraser l'historique distant!"
-                        read_input "Êtes-vous vraiment sûr ? (oui/non)" force_confirm
-                        if [ "$force_confirm" = "oui" ]; then
-                            git push --force
-                            if ! check_command "Impossible de force push."; then
-                                continue
-                            fi
-                        else
-                            continue
-                        fi
-                        ;;
-                    *)
-                        error_msg "Option invalide."
-                        continue
-                        ;;
-                esac
-            fi
-            success_msg "Modifications poussées avec succès."
-            break
-        elif [ "$push_option" = "non" ]; then
-            warning_msg "Aucune modification poussée."
-            break
+        # Essayer de push
+        if git push origin HEAD; then
+            success_msg "Push réussi."
+            return 0
         else
-            error_msg "Option invalide."
-            continue
+            # En cas d'erreur, proposer des options
+            echo "Erreur lors du push. Que voulez-vous faire ?"
+            echo "1. Réessayer"
+            echo "2. Pull puis Push (avec rebase)"
+            echo "3. Force Push (ATTENTION: peut écraser les changements distants)"
+            echo "4. Annuler"
+            
+            read_input "Choisissez une option (1/2/3/4)" push_option
+            if [ $? -eq 1 ]; then
+                return 1
+            fi
+            
+            case $push_option in
+                1) continue ;;
+                2)
+                    git pull --rebase origin HEAD
+                    if ! check_command "Impossible de pull les changements."; then
+                        continue
+                    fi
+                    ;;
+                3)
+                    warning_msg "Le force push peut écraser les changements distants!"
+                    read_input "Êtes-vous sûr ? (oui/non)" confirm_force
+                    if [ $? -eq 1 ] || [ "$confirm_force" != "oui" ]; then
+                        continue
+                    fi
+                    git push -f origin HEAD
+                    if ! check_command "Force push échoué."; then
+                        continue
+                    fi
+                    success_msg "Force push réussi."
+                    return 0
+                    ;;
+                4) return 1 ;;
+                *) error_msg "Option invalide." ; continue ;;
+            esac
         fi
     done
+}
+
+# Fonction principale
+function main() {
+    # Initialiser Git si nécessaire
+    if ! init_git; then
+        return 1
+    fi
+    
+    # Ajouter les fichiers
+    if ! add_files; then
+        return 1
+    fi
+    
+    # Créer le commit
+    if ! commit_changes; then
+        return 1
+    fi
+    
+    # Push les changements
+    if ! push_changes; then
+        return 1
+    fi
+    
+    success_msg "Opération terminée avec succès!"
     return 0
 }
 
-# Main
-function main() {
-    # Vérifier si git est installé
-    if ! command -v git >/dev/null 2>&1; then
-        error_msg "Git n'est pas installé sur votre système."
-        exit 1
-    }
-
-    while true; do
-        init_git
-        if [ $? -eq 1 ]; then
-            continue
-        fi
-        
-        add_files
-        if [ $? -eq 1 ]; then
-            continue
-        fi
-        
-        commit_changes
-        if [ $? -eq 1 ]; then
-            continue
-        fi
-        
-        push_changes
-        if [ $? -eq 1 ]; then
-            continue
-        fi
-        
-        break
-    done
-}
-
+# Lancer le script
 main
