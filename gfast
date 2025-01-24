@@ -58,13 +58,16 @@ EOL
 
 # Fonction pour cloner un repository
 function clone_repository() {
-    read_input "Voulez-vous cloner un repository? (oui/non) [non]" do_clone
+    echo "Voulez-vous cloner un repository ?"
+    echo "1. Oui"
+    echo "2. Non [défaut]"
+    read_input "Choisissez une option (1/2)" do_clone
     if [ $? -eq 1 ]; then
         return 1
     fi
     
-    do_clone=${do_clone:-non}
-    if [ "$do_clone" = "oui" ]; then
+    do_clone=${do_clone:-2}
+    if [ "$do_clone" = "1" ]; then
         read_input "Entrez l'URL du repository à cloner" clone_url
         if [ $? -eq 1 ]; then
             return 1
@@ -84,13 +87,16 @@ function clone_repository() {
 # Fonction pour initialiser Git si nécessaire
 function init_git() {
     if [ ! -d ".git" ]; then
-        read_input "Aucun dépôt Git trouvé. Voulez-vous l'initialiser? (oui/non) [oui]" do_init
+        echo "Voulez-vous initialiser Git ?"
+        echo "1. Oui [défaut]"
+        echo "2. Non"
+        read_input "Choisissez une option (1/2)" do_init
         if [ $? -eq 1 ]; then
             return 1
         fi
         
-        do_init=${do_init:-oui}
-        if [ "$do_init" = "oui" ]; then
+        do_init=${do_init:-1}
+        if [ "$do_init" = "1" ]; then
             echo "Initialisation du dépôt Git..."
             git init
             if ! check_command "Impossible d'initialiser le dépôt Git."; then
@@ -102,13 +108,16 @@ function init_git() {
             create_gitignore
             
             while true; do
-                read_input "Voulez-vous configurer un remote? (oui/non) [oui]" config_remote
+                echo "Voulez-vous configurer un remote ?"
+                echo "1. Oui [défaut]"
+                echo "2. Non"
+                read_input "Choisissez une option (1/2)" config_remote
                 if [ $? -eq 1 ]; then
                     return 1
                 fi
-                config_remote=${config_remote:-oui}
+                config_remote=${config_remote:-1}
                 
-                if [ "$config_remote" = "oui" ]; then
+                if [ "$config_remote" = "1" ]; then
                     read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
                     if [ $? -eq 1 ]; then
                         continue
@@ -117,11 +126,14 @@ function init_git() {
                     # Vérifier si le remote existe déjà
                     if git remote | grep -q "^origin$"; then
                         warning_msg "Le remote 'origin' existe déjà."
-                        read_input "Voulez-vous le remplacer? (oui/non)" replace_remote
+                        echo "Voulez-vous le remplacer ?"
+                        echo "1. Oui"
+                        echo "2. Non"
+                        read_input "Choisissez une option (1/2)" replace_remote
                         if [ $? -eq 1 ]; then
                             continue
                         fi
-                        if [ "$replace_remote" = "oui" ]; then
+                        if [ "$replace_remote" = "1" ]; then
                             git remote remove origin
                         else
                             continue
