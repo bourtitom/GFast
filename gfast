@@ -363,9 +363,7 @@ function push_changes() {
 
 # Fonction pour vérifier si le dossier est vide (en ignorant .git)
 function is_directory_empty() {
-    local count
-    count=$(ls -la | grep -v "^d.*\.git$" | grep -v "^total" | grep -v "^\.$" | grep -v "^\.\.$" | wc -l)
-    [ "$count" -le 0 ]
+    [ -z "$(ls -A | grep -v '^\.git$')" ]
 }
 
 # Fonction principale
