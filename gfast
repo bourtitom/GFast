@@ -1,123 +1,166 @@
 #!/bin/bash
 
-# Couleurs et styles
+# Couleurs pour les messages
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
-WHITE='\033[1;37m'
-BOLD='\033[1m'
-DIM='\033[2m'
-ITALIC='\033[3m'
-UNDERLINE='\033[4m'
-BLINK='\033[5m'
-BG_BLUE='\033[44m'
-NC='\033[0m'
+NC='\033[0m' # No Color
 
 # Symboles
 CHECK="✓"
 CROSS="✗"
 ARROW="➜"
-STAR="★"
 DOT="•"
-BRANCH="⎇"
-ROCKET="🚀"
-SPARKLES="✨"
-GEAR="⚙️"
-LIGHTNING="⚡"
 
-# Logo ASCII
-function print_logo() {
-    echo -e "${BLUE}${BOLD}"
-    echo "    ________  ______           __"
-    echo "   / ____/ _/ / __/___ ______/ /_"
-    echo "  / / __/ /_  / /_/ __ \`/ ___/ __/"
-    echo " / /_/ / __/ / __/ /_/ (__  ) /_"
-    echo " \____/_/   /_/  \__,_/____/\__/"
-    echo -e "${NC}\n"
-    echo -e "${DIM}Version 1.0.0${NC}"
-    print_separator
-}
-
-# Fonction pour afficher une ligne de séparation
-function print_separator() {
-    echo -e "${DIM}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-}
-
-# Fonction pour afficher un cadre
-function print_box() {
-    local text=$1
-    local width=$((${#text} + 4))
-    echo -e "${DIM}┌$("printf '─%.0s' $(seq 1 $width))┐${NC}"
-    echo -e "${DIM}│${NC}  ${text}  ${DIM}│${NC}"
-    echo -e "${DIM}└$("printf '─%.0s' $(seq 1 $width))┘${NC}"
-}
-
-# Animation de chargement
-function show_spinner() {
-    local pid=$1
-    local message=$2
-    local spin='-\|/'
-    local i=0
-    while kill -0 $pid 2>/dev/null; do
-        i=$(( (i+1) %4 ))
-        printf "\r${BLUE}${GEAR} ${message} ${BLINK}${spin:$i:1}${NC}"
-        sleep .1
-    done
-    printf "\r"
-}
-
-# Fonction pour afficher un titre
-function print_title() {
-    print_separator
-    echo -e "${BOLD}${BG_BLUE}${WHITE}  $1  ${NC}"
-    print_separator
-}
-
-# Fonction pour afficher une option de menu
-function print_option() {
-    local number=$1
-    local text=$2
-    local default=$3
-    if [ -n "$default" ]; then
-        echo -e "${CYAN}${STAR} $number.${NC} $text ${DIM}[défaut]${NC}"
-    else
-        echo -e "${CYAN}${DOT} $number.${NC} $text"
-    fi
-}
-
-# Messages d'état
-function success_msg() {
-    echo -e "\n${GREEN}${SPARKLES} $1 ${SPARKLES}${NC}\n"
-}
-
+# Fonction pour afficher les messages d'erreur
 function error_msg() {
-    echo -e "\n${RED}${CROSS} $1 ${CROSS}${NC}\n"
+    echo -e "${RED}Erreur: $1${NC}"
 }
 
+# Fonction pour afficher les messages de succès
+function success_msg() {
+    echo -e "${GREEN}Succès: $1${NC}"
+}
+
+# Fonction pour afficher les avertissements
 function warning_msg() {
-    echo -e "\n${YELLOW}${LIGHTNING} $1${NC}\n"
+    echo -e "${YELLOW}Attention: $1${NC}"
 }
 
+# Fonction pour afficher les informations
 function info_msg() {
-    echo -e "\n${BLUE}${ROCKET} $1${NC}\n"
+    echo -e "${BLUE}Info: $1${NC}"
 }
 
-# Fonction pour lire l'entrée utilisateur
+# Fonction pour vérifier si une commande a réussi
+function check_command() {
+    if [ $? -ne 0 ]; then
+        error_msg "$1"
+        return 1
+    fi
+    return 0
+}
+
+# Fonction pour lire l'entrée avec option de retour
 function read_input() {
     local prompt=$1
     local var_name=$2
-    
-    echo -e "${MAGENTA}${ARROW}${NC} ${ITALIC}${prompt}${NC} ${DIM}(r pour retour)${NC}: " >&2
-    read -r response
-    
-    if [ "$response" = "r" ] || [ "$response" = "R" ]; then
+    while true; do
+        read -p "${MAGENTA}${ARROW}${NC} $prompt (r pour retour): " input
+        if [ "$input" = "r" ]; then
+            return 1
+        fi
+        eval "$var_name='$input'"
+        return 0
+    done
+}
+
+# Fonction pour créer le .gitignore par défaut
+function create_gitignore() {
+    if [ ! -f ".gitignore" ]; then
+        cat > .gitignore << 'EOL'
+.DS_Store
+*.log
+*.tmp
+EOL
+        success_msg "Fichier .gitignore créé avec les règles par défaut."
+    fi
+}
+
+# Fonction pour cloner un repository
+function clone_repository() {
+    read_input "Entrez l'URL du repository à cloner" clone_url
+    if [ $? -eq 1 ]; then
         return 1
     fi
     
-    eval "$var_name=\"$response\""
+    info_msg "Clonage en cours..."
+    git clone "$clone_url" .
+    if ! check_command "Impossible de cloner le repository."; then
+        return 1
+    fi
+    success_msg "Repository cloné avec succès."
+    create_gitignore
+    return 0
+}
+
+# Fonction pour initialiser Git
+function init_git() {
+    info_msg "Initialisation du dépôt Git..."
+    git init
+    if ! check_command "Impossible d'initialiser le dépôt Git."; then
+        return 1
+    fi
+    success_msg "Dépôt Git initialisé avec succès."
+    
+    # Créer le .gitignore
+    create_gitignore
+    
+    while true; do
+        echo "Voulez-vous configurer un remote ?"
+        echo "${CYAN}1.${NC} Oui [défaut]"
+        echo "${CYAN}2.${NC} Non"
+        read_input "Choisissez une option (1/2)" config_remote
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+        
+        config_remote=${config_remote:-1}
+        
+        if [ "$config_remote" = "1" ]; then
+            read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
+            if [ $? -eq 1 ]; then
+                continue
+            fi
+            
+            # Vérifier si le remote existe déjà
+            if git remote | grep -q "^origin$"; then
+                warning_msg "Le remote 'origin' existe déjà."
+                echo "Voulez-vous le remplacer ?"
+                echo "${CYAN}1.${NC} Oui"
+                echo "${CYAN}2.${NC} Non"
+                read_input "Choisissez une option (1/2)" replace_remote
+                if [ $? -eq 1 ]; then
+                    continue
+                fi
+                if [ "$replace_remote" = "1" ]; then
+                    git remote remove origin
+                else
+                    continue
+                fi
+            fi
+            
+            info_msg "Configuration du remote..."
+            git remote add origin "$remote_url"
+            if ! check_command "Impossible d'ajouter le remote."; then
+                continue
+            fi
+            success_msg "Remote configuré avec succès."
+        fi
+        break
+    done
+    return 0
+}
+
+# Fonction pour gérer l'initialisation ou le clonage
+function setup_git() {
+    echo "Que souhaitez-vous faire ?"
+    echo "${CYAN}1.${NC} Cloner un repository"
+    echo "${CYAN}2.${NC} Initialiser un nouveau dépôt Git [défaut]"
+    read_input "Choisissez une option (1/2)" choice
+    if [ $? -eq 1 ]; then
+        return 1
+    fi
+    
+    choice=${choice:-2}
+    if [ "$choice" = "1" ]; then
+        clone_repository
+    else
+        init_git
+    fi
     return 0
 }
 
@@ -127,6 +170,74 @@ function check_changes() {
         error_msg "Aucune modification à commiter."
         return 1
     fi
+    return 0
+}
+
+# Fonction pour ajouter les fichiers
+function add_files() {
+    # Vérifier si on est dans un repo git
+    if [ ! -d ".git" ]; then
+        error_msg "Pas de dépôt Git trouvé."
+        return 1
+    fi
+
+    # Vérifier s'il y a des modifications
+    if ! check_changes; then
+        return 1
+    fi
+
+    while true; do
+        echo "Que voulez-vous ajouter ?"
+        echo "${CYAN}1.${NC} Tout ajouter (git add .) [défaut]"
+        echo "${CYAN}2.${NC} Sélectionner des fichiers spécifiques"
+        read_input "Choisissez une option (1/2)" option
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+        
+        # Si l'option est vide, utiliser l'option 1 par défaut
+        option=${option:-1}
+
+        if [ "$option" = "1" ]; then
+            info_msg "Ajout de tous les fichiers..."
+            git add .
+            if ! check_command "Impossible d'ajouter les fichiers."; then
+                continue
+            fi
+            success_msg "Tous les fichiers ont été ajoutés."
+            break
+        elif [ "$option" = "2" ]; then
+            echo "Voici les fichiers modifiés:"
+            git status -s
+            read_input "Entrez les numéros des fichiers à ajouter (ex: 1 2 3)" files
+            if [ $? -eq 1 ]; then
+                continue
+            fi
+            
+            # Vérifier si la sélection est valide
+            total_files=$(git status -s | wc -l)
+            for file in $files; do
+                if ! [[ "$file" =~ ^[0-9]+$ ]] || [ "$file" -gt "$total_files" ] || [ "$file" -lt 1 ]; then
+                    error_msg "Sélection invalide: $file"
+                    continue 2
+                fi
+            done
+            
+            for file in $files; do
+                file_path=$(sed -n "${file}p" <<< "$(git status -s | cut -c4-)")
+                info_msg "Ajout de $file_path..."
+                git add "$file_path"
+                if ! check_command "Impossible d'ajouter le fichier: $file_path"; then
+                    continue 2
+                fi
+            done
+            success_msg "Les fichiers sélectionnés ont été ajoutés."
+            break
+        else
+            error_msg "Option invalide."
+            continue
+        fi
+    done
     return 0
 }
 
@@ -142,14 +253,14 @@ function check_staged() {
 # Fonction pour choisir le type de commit
 function choose_commit_type() {
     while true; do
-        echo -e "${ITALIC}Choisissez le type de votre commit :${NC}"
-        echo "1. feat : Nouvelle fonctionnalité"
-        echo "2. fix : Correction de bug"
-        echo "3. docs : Modification de la documentation"
-        echo "4. style : Formatage du code"
-        echo "5. refactor : Restructuration du code"
-        echo "6. test : Ajout ou modification de tests"
-        echo "7. chore : Tâches diverses"
+        echo "Choisissez le type de votre commit :"
+        echo "${CYAN}1.${NC} feat : Nouvelle fonctionnalité"
+        echo "${CYAN}2.${NC} fix : Correction de bug"
+        echo "${CYAN}3.${NC} docs : Modification de la documentation"
+        echo "${CYAN}4.${NC} style : Formatage du code"
+        echo "${CYAN}5.${NC} refactor : Restructuration du code"
+        echo "${CYAN}6.${NC} test : Ajout ou modification de tests"
+        echo "${CYAN}7.${NC} chore : Tâches diverses"
         
         read_input "Choisissez une option (1/2/3/4/5/6/7)" commit_type
         if [ $? -eq 1 ]; then
@@ -201,10 +312,8 @@ function commit_changes() {
     fi
     
     # Effectuer le commit
-    git commit -m "$commit_msg" &
-    show_spinner $! "Création du commit"
-    wait $!
-    
+    info_msg "Création du commit..."
+    git commit -m "$commit_msg"
     if ! check_command "Impossible de créer le commit."; then
         return 1
     fi
@@ -231,16 +340,17 @@ function push_changes() {
     
     while true; do
         # Essayer de push
+        info_msg "Push en cours..."
         if git push origin HEAD; then
             success_msg "Push réussi."
             return 0
         else
             # En cas d'erreur, proposer des options
-            echo -e "${ITALIC}Erreur lors du push. Que voulez-vous faire ?${NC}"
-            echo "1. Réessayer"
-            echo "2. Pull puis Push (avec rebase)"
-            echo "3. Force Push (ATTENTION: peut écraser les changements distants)"
-            echo "4. Annuler"
+            echo "Erreur lors du push. Que voulez-vous faire ?"
+            echo "${CYAN}1.${NC} Réessayer"
+            echo "${CYAN}2.${NC} Pull puis Push (avec rebase)"
+            echo "${CYAN}3.${NC} Force Push (ATTENTION: peut écraser les changements distants)"
+            echo "${CYAN}4.${NC} Annuler"
             
             read_input "Choisissez une option (1/2/3/4)" push_option
             if [ $? -eq 1 ]; then
@@ -250,10 +360,8 @@ function push_changes() {
             case $push_option in
                 1) continue ;;
                 2)
-                    git pull --rebase origin HEAD &
-                    show_spinner $! "Pull des changements"
-                    wait $!
-                    
+                    info_msg "Pull des changements..."
+                    git pull --rebase origin HEAD
                     if ! check_command "Impossible de pull les changements."; then
                         continue
                     fi
@@ -264,10 +372,8 @@ function push_changes() {
                     if [ $? -eq 1 ] || [ "$confirm_force" != "oui" ]; then
                         continue
                     fi
-                    git push -f origin HEAD &
-                    show_spinner $! "Force push"
-                    wait $!
-                    
+                    info_msg "Force push en cours..."
+                    git push -f origin HEAD
                     if ! check_command "Force push échoué."; then
                         continue
                     fi
@@ -317,188 +423,6 @@ function main() {
     fi
     
     success_msg "Opération terminée avec succès!"
-    return 0
-}
-
-# Fonction pour gérer l'initialisation ou le clonage
-function setup_git() {
-    print_logo
-    print_title "Configuration Git"
-    print_box "Que souhaitez-vous faire ?"
-    echo
-    print_option "1" "Cloner un repository"
-    print_option "2" "Initialiser un nouveau dépôt Git" "true"
-    echo
-    read_input "Choisissez une option (1/2)" choice
-    if [ $? -eq 1 ]; then
-        return 1
-    fi
-    
-    choice=${choice:-2}
-    if [ "$choice" = "1" ]; then
-        info_msg "Configuration du clonage..."
-        clone_repository
-    else
-        info_msg "Initialisation d'un nouveau dépôt..."
-        init_git
-    fi
-    return 0
-}
-
-# Fonction pour cloner un repository
-function clone_repository() {
-    print_title "Clonage du Repository"
-    read_input "Entrez l'URL du repository à cloner" clone_url
-    if [ $? -eq 1 ]; then
-        return 1
-    fi
-    
-    info_msg "Clonage en cours..."
-    git clone "$clone_url" . &
-    show_spinner $! "Clonage du repository"
-    wait $!
-    
-    if ! check_command "Impossible de cloner le repository."; then
-        return 1
-    fi
-    success_msg "Repository cloné avec succès"
-    create_gitignore
-    return 0
-}
-
-# Fonction pour initialiser Git
-function init_git() {
-    print_title "Initialisation Git"
-    info_msg "Initialisation du dépôt Git..."
-    git init &
-    show_spinner $! "Initialisation du dépôt"
-    wait $!
-    
-    if ! check_command "Impossible d'initialiser le dépôt Git."; then
-        return 1
-    fi
-    success_msg "Dépôt Git initialisé avec succès"
-    
-    create_gitignore
-    
-    print_title "Configuration du Remote"
-    print_box "Voulez-vous configurer un remote ?"
-    echo
-    print_option "1" "Oui" "true"
-    print_option "2" "Non"
-    echo
-    read_input "Choisissez une option (1/2)" config_remote
-    if [ $? -eq 1 ]; then
-        return 1
-    fi
-    config_remote=${config_remote:-1}
-    
-    if [ "$config_remote" = "1" ]; then
-        read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
-        if [ $? -eq 1 ]; then
-            return 1
-        fi
-        
-        if git remote | grep -q "^origin$"; then
-            warning_msg "Le remote 'origin' existe déjà"
-            print_box "Voulez-vous le remplacer ?"
-            echo
-            print_option "1" "Oui"
-            print_option "2" "Non"
-            echo
-            read_input "Choisissez une option (1/2)" replace_remote
-            if [ $? -eq 1 ]; then
-                return 1
-            fi
-            if [ "$replace_remote" = "1" ]; then
-                git remote remove origin
-            else
-                return 0
-            fi
-        fi
-        
-        info_msg "Configuration du remote..."
-        git remote add origin "$remote_url" &
-        show_spinner $! "Configuration du remote"
-        wait $!
-        
-        if ! check_command "Impossible d'ajouter le remote."; then
-            return 1
-        fi
-        success_msg "Remote configuré avec succès"
-    fi
-    return 0
-}
-
-# Fonction pour créer le .gitignore
-function create_gitignore() {
-    if [ ! -f ".gitignore" ]; then
-        info_msg "Création du fichier .gitignore..."
-        cat > .gitignore << 'EOL' &
-.DS_Store
-*.log
-*.tmp
-EOL
-        show_spinner $! "Création du .gitignore"
-        wait $!
-        success_msg "Fichier .gitignore créé avec les règles par défaut"
-    fi
-}
-
-# Fonction pour ajouter les fichiers
-function add_files() {
-    print_title "Ajout des Fichiers"
-    if [ ! -d ".git" ]; then
-        error_msg "Pas de dépôt Git trouvé"
-        return 1
-    fi
-    
-    if ! check_changes; then
-        return 1
-    fi
-    
-    print_box "Que voulez-vous ajouter ?"
-    echo
-    print_option "1" "Tout ajouter (git add .)" "true"
-    print_option "2" "Sélectionner des fichiers spécifiques"
-    echo
-    read_input "Choisissez une option (1/2)" option
-    if [ $? -eq 1 ]; then
-        return 1
-    fi
-    
-    option=${option:-1}
-    if [ "$option" = "1" ]; then
-        info_msg "Ajout de tous les fichiers..."
-        git add . &
-        show_spinner $! "Ajout des fichiers"
-        wait $!
-        
-        if ! check_command "Impossible d'ajouter les fichiers."; then
-            return 1
-        fi
-        success_msg "Tous les fichiers ont été ajoutés"
-    else
-        echo -e "\n${ITALIC}Voici les fichiers modifiés :${NC}"
-        git status -s
-        read_input "Entrez les numéros des fichiers à ajouter (ex: 1 2 3)" files
-        if [ $? -eq 1 ]; then
-            return 1
-        fi
-        
-        for file in $files; do
-            file_path=$(sed -n "${file}p" <<< "$(git status -s | cut -c4-)")
-            info_msg "Ajout de $file_path..."
-            git add "$file_path" &
-            show_spinner $! "Ajout de $file_path"
-            wait $!
-            
-            if ! check_command "Impossible d'ajouter le fichier: $file_path"; then
-                return 1
-            fi
-        done
-        success_msg "Les fichiers sélectionnés ont été ajoutés"
-    fi
     return 0
 }
 
