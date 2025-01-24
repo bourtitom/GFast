@@ -44,51 +44,102 @@ function read_input() {
     done
 }
 
+# Fonction pour créer le .gitignore par défaut
+function create_gitignore() {
+    if [ ! -f ".gitignore" ]; then
+        cat > .gitignore << 'EOL'
+.DS_Store
+*.log
+*.tmp
+EOL
+        success_msg "Fichier .gitignore créé avec les règles par défaut."
+    fi
+}
+
+# Fonction pour cloner un repository
+function clone_repository() {
+    read_input "Voulez-vous cloner un repository? (oui/non) [non]" do_clone
+    if [ $? -eq 1 ]; then
+        return 1
+    fi
+    
+    do_clone=${do_clone:-non}
+    if [ "$do_clone" = "oui" ]; then
+        read_input "Entrez l'URL du repository à cloner" clone_url
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+        
+        git clone "$clone_url" .
+        if ! check_command "Impossible de cloner le repository."; then
+            return 1
+        fi
+        success_msg "Repository cloné avec succès."
+        create_gitignore
+        return 0
+    fi
+    return 2
+}
+
 # Fonction pour initialiser Git si nécessaire
 function init_git() {
     if [ ! -d ".git" ]; then
-        echo "Aucun dépôt Git trouvé. Initialisation..."
-        git init
-        if ! check_command "Impossible d'initialiser le dépôt Git."; then
+        read_input "Aucun dépôt Git trouvé. Voulez-vous l'initialiser? (oui/non) [oui]" do_init
+        if [ $? -eq 1 ]; then
             return 1
         fi
-        success_msg "Dépôt Git initialisé avec succès."
         
-        while true; do
-            read_input "Voulez-vous configurer un remote? (oui/non) [oui]" config_remote
-            if [ $? -eq 1 ]; then
+        do_init=${do_init:-oui}
+        if [ "$do_init" = "oui" ]; then
+            echo "Initialisation du dépôt Git..."
+            git init
+            if ! check_command "Impossible d'initialiser le dépôt Git."; then
                 return 1
             fi
-            config_remote=${config_remote:-oui}
+            success_msg "Dépôt Git initialisé avec succès."
             
-            if [ "$config_remote" == "oui" ]; then
-                read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
+            # Créer le .gitignore
+            create_gitignore
+            
+            while true; do
+                read_input "Voulez-vous configurer un remote? (oui/non) [oui]" config_remote
                 if [ $? -eq 1 ]; then
-                    continue
+                    return 1
                 fi
+                config_remote=${config_remote:-oui}
                 
-                # Vérifier si le remote existe déjà
-                if git remote | grep -q "^origin$"; then
-                    warning_msg "Le remote 'origin' existe déjà."
-                    read_input "Voulez-vous le remplacer? (oui/non)" replace_remote
+                if [ "$config_remote" = "oui" ]; then
+                    read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
                     if [ $? -eq 1 ]; then
                         continue
                     fi
-                    if [ "$replace_remote" = "oui" ]; then
-                        git remote remove origin
-                    else
+                    
+                    # Vérifier si le remote existe déjà
+                    if git remote | grep -q "^origin$"; then
+                        warning_msg "Le remote 'origin' existe déjà."
+                        read_input "Voulez-vous le remplacer? (oui/non)" replace_remote
+                        if [ $? -eq 1 ]; then
+                            continue
+                        fi
+                        if [ "$replace_remote" = "oui" ]; then
+                            git remote remove origin
+                        else
+                            continue
+                        fi
+                    fi
+                    
+                    git remote add origin "$remote_url"
+                    if ! check_command "Impossible d'ajouter le remote."; then
                         continue
                     fi
+                    success_msg "Remote configuré avec succès."
                 fi
-                
-                git remote add origin "$remote_url"
-                if ! check_command "Impossible d'ajouter le remote."; then
-                    continue
-                fi
-                success_msg "Remote configuré avec succès."
-            fi
-            break
-        done
+                break
+            done
+        else
+            error_msg "Un dépôt Git est nécessaire pour continuer."
+            return 1
+        fi
     fi
     return 0
 }
@@ -312,9 +363,24 @@ function push_changes() {
 
 # Fonction principale
 function main() {
-    # Initialiser Git si nécessaire
-    if ! init_git; then
-        return 1
+    # Vérifier si le répertoire est vide
+    if [ -z "$(ls -A)" ]; then
+        # Si le répertoire est vide, proposer de cloner
+        clone_repository
+        clone_result=$?
+        if [ $clone_result -eq 1 ]; then
+            return 1
+        elif [ $clone_result -eq 2 ]; then
+            # Si l'utilisateur ne veut pas cloner, initialiser Git
+            if ! init_git; then
+                return 1
+            fi
+        fi
+    else
+        # Si le répertoire n'est pas vide, initialiser Git si nécessaire
+        if ! init_git; then
+            return 1
+        fi
     fi
     
     # Ajouter les fichiers
