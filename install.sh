@@ -101,8 +101,8 @@ install_script() {
     local script_path="/usr/local/bin/gf"
     
     # Copier le script
-    if [ -f "gitfast" ]; then
-        sudo cp gitfast "$script_path"
+    if [ -f "gfast" ]; then
+        sudo cp gfast "$script_path"
     else
         sudo cp git_push.sh "$script_path"
     fi
