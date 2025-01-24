@@ -361,10 +361,17 @@ function push_changes() {
     done
 }
 
+# Fonction pour vérifier si le dossier est vide (en ignorant .git)
+function is_directory_empty() {
+    local count
+    count=$(ls -la | grep -v "^d.*\.git$" | grep -v "^total" | grep -v "^\.$" | grep -v "^\.\.$" | wc -l)
+    [ "$count" -le 0 ]
+}
+
 # Fonction principale
 function main() {
-    # Vérifier si le répertoire est vide
-    if [ -z "$(ls -A)" ]; then
+    # Vérifier si le répertoire est vide (en ignorant .git)
+    if is_directory_empty; then
         # Si le répertoire est vide, proposer de cloner
         clone_repository
         clone_result=$?
