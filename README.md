@@ -1,6 +1,6 @@
-# GitFast - Script d'automatisation Git
+# GFast - Script d'automatisation Git
 
-GitFast est un script shell interactif qui simplifie et standardise le processus de commit et de push Git. Il offre une interface utilisateur conviviale avec des messages colorés et une gestion d'erreurs robuste.
+GFast est un script shell interactif qui simplifie et standardise le processus de commit et de push Git. Il offre une interface utilisateur conviviale avec des messages colorés et une gestion d'erreurs robuste.
 
 ## 🚀 Fonctionnalités
 
@@ -25,8 +25,8 @@ GitFast est un script shell interactif qui simplifie et standardise le processus
 
 1. Copiez le script dans votre dossier `~/bin` :
 ```bash
-cp git_push.sh ~/bin/gitfast
-chmod +x ~/bin/gitfast
+cp gf.sh ~/bin/gf
+chmod +x ~/bin/gf
 ```
 
 2. Ajoutez le dossier bin à votre PATH (si ce n'est pas déjà fait) :
@@ -40,7 +40,7 @@ source ~/.zshrc
 1. Naviguez vers n'importe quel projet
 2. Exécutez simplement :
 ```bash
-gitfast
+gf
 ```
 
 Le script vous guidera à travers les étapes suivantes :

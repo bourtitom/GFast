@@ -8,7 +8,7 @@ NC='\033[0m' # No Color
 
 # Variables globales
 GITHUB_REPO="bourtitom/GFast"
-TEMP_DIR="/tmp/gitfast-install"
+TEMP_DIR="/tmp/gfast-install"
 
 # Fonction pour afficher les messages d'erreur
 error() {
@@ -65,17 +65,17 @@ create_directories() {
     # Créer le répertoire pour les binaires
     sudo mkdir -p /usr/local/bin
     # Créer le répertoire pour la documentation
-    sudo mkdir -p /usr/local/share/doc/gitfast
+    sudo mkdir -p /usr/local/share/doc/gfast
     # Créer le répertoire pour la complétion
     sudo mkdir -p /usr/local/share/zsh/site-functions
 }
 
 # Installer la complétion ZSH
 install_completion() {
-    cat > _gitfast << 'EOL'
-#compdef gitfast
+    cat > _gf << 'EOL'
+#compdef gf
 
-_gitfast() {
+_gf() {
     local state
 
     _arguments \
@@ -84,24 +84,24 @@ _gitfast() {
 
     case $state in
         cmds)
-            _values 'gitfast commands' \
+            _values 'gf commands' \
                 'help[Afficher l aide]'
             ;;
     esac
 }
 
-_gitfast "$@"
+_gf "$@"
 EOL
-    sudo mv _gitfast /usr/local/share/zsh/site-functions/
+    sudo mv _gf /usr/local/share/zsh/site-functions/
     success "Complétion ZSH installée ✓"
 }
 
 # Installer le script principal
 install_script() {
-    local script_path="/usr/local/bin/gitfast"
+    local script_path="/usr/local/bin/gf"
     
     # Copier le script
-    sudo cp git_push.sh "$script_path"
+    sudo cp gitfast "$script_path"
     sudo chmod +x "$script_path"
     
     success "Script installé dans $script_path ✓"
@@ -109,22 +109,22 @@ install_script() {
 
 # Installer la documentation
 install_docs() {
-    local doc_path="/usr/local/share/doc/gitfast"
+    local doc_path="/usr/local/share/doc/gfast"
     
     # Créer la documentation
     cat > README.md << 'EOL'
-# GitFast - Script d'automatisation Git
+# GFast - Script d'automatisation Git
 
-GitFast est un script shell interactif qui simplifie et standardise le processus de commit et de push Git.
+GFast est un script shell interactif qui simplifie et standardise le processus de commit et de push Git.
 
 ## Utilisation
 
 Simplement exécuter :
 ```bash
-gitfast
+gf
 ```
 
-Pour plus d'informations, visitez : https://github.com/votre-repo/gitfast
+Pour plus d'informations, visitez : https://github.com/bourtitom/GFast
 EOL
     
     sudo cp README.md "$doc_path/"
@@ -148,11 +148,11 @@ configure_path() {
 
 # Fonction de désinstallation
 uninstall() {
-    echo "Désinstallation de GitFast..."
-    sudo rm -f /usr/local/bin/gitfast
-    sudo rm -f /usr/local/share/zsh/site-functions/_gitfast
-    sudo rm -rf /usr/local/share/doc/gitfast
-    success "GitFast désinstallé avec succès"
+    echo "Désinstallation de GFast..."
+    sudo rm -f /usr/local/bin/gf
+    sudo rm -f /usr/local/share/zsh/site-functions/_gf
+    sudo rm -rf /usr/local/share/doc/gfast
+    success "GFast désinstallé avec succès"
 }
 
 # Fonction principale d'installation
@@ -162,7 +162,7 @@ main() {
         exit 0
     fi
 
-    echo "Installation de GitFast..."
+    echo "Installation de GFast..."
     
     # Vérifications préalables
     check_sudo
@@ -186,8 +186,8 @@ main() {
         rm -rf "$TEMP_DIR"
     fi
     
-    success "\nGitFast installé avec succès! 🎉"
-    warning "Redémarrez votre terminal ou exécutez 'source ~/.zshrc' pour utiliser gitfast"
+    success "\nGFast installé avec succès! 🎉"
+    warning "Redémarrez votre terminal ou exécutez 'source ~/.zshrc' pour utiliser gf"
 }
 
 # Gérer les arguments
@@ -200,9 +200,9 @@ case "$1" in
         ;;
     help|-h|--help)
         echo "Usage: $0 [uninstall|github|help]"
-        echo "  Sans argument : Installe GitFast depuis les fichiers locaux"
-        echo "  github       : Installe GitFast depuis GitHub"
-        echo "  uninstall    : Désinstalle GitFast"
+        echo "  Sans argument : Installe GFast depuis les fichiers locaux"
+        echo "  github       : Installe GFast depuis GitHub"
+        echo "  uninstall    : Désinstalle GFast"
         echo "  help        : Affiche cette aide"
         exit 0
         ;;
