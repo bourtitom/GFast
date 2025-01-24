@@ -444,37 +444,186 @@ function is_directory_empty() {
     [ -z "$(ls -A | grep -v '^\.git$')" ]
 }
 
-# Fonction principale
+# Fonction pour afficher le menu principal
+function show_main_menu() {
+    while true; do
+        print_section_title "Menu Principal GFast"
+        echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+        print_menu_option "1" "Initialiser/Cloner un dépôt"
+        print_menu_option "2" "Gérer les fichiers (add/status)"
+        print_menu_option "3" "Créer un commit"
+        print_menu_option "4" "Gérer les branches"
+        print_menu_option "5" "Synchroniser (push/pull)"
+        print_menu_option "6" "Voir l'historique"
+        print_menu_option "7" "Configuration Git"
+        print_menu_option "8" "Aide"
+        print_menu_option "q" "Quitter"
+        echo
+
+        read_input "Choisissez une option" choice
+        case $choice in
+            1) setup_git ;;
+            2) add_files ;;
+            3) commit_changes ;;
+            4) manage_branches ;;
+            5) sync_changes ;;
+            6) view_history ;;
+            7) configure_git ;;
+            8) show_help ;;
+            q|Q) exit 0 ;;
+            *) error_msg "Option invalide" ;;
+        esac
+    done
+}
+
+# Fonction pour gérer les branches
+function manage_branches() {
+    print_section_title "Gestion des Branches"
+    echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+    print_menu_option "1" "Lister les branches"
+    print_menu_option "2" "Créer une nouvelle branche"
+    print_menu_option "3" "Changer de branche"
+    print_menu_option "4" "Fusionner une branche"
+    print_menu_option "5" "Supprimer une branche"
+    print_menu_option "r" "Retour"
+    echo
+
+    read_input "Choisissez une option" choice
+    case $choice in
+        1) git branch -a ;;
+        2) 
+            read_input "Nom de la nouvelle branche" branch_name
+            [ $? -eq 0 ] && git checkout -b "$branch_name"
+            ;;
+        3)
+            echo -e "\n${WHITE}${BOLD}Branches disponibles :${NC}"
+            git branch
+            read_input "Nom de la branche" branch_name
+            [ $? -eq 0 ] && git checkout "$branch_name"
+            ;;
+        4)
+            echo -e "\n${WHITE}${BOLD}Branches disponibles :${NC}"
+            git branch
+            read_input "Nom de la branche à fusionner" branch_name
+            [ $? -eq 0 ] && git merge "$branch_name"
+            ;;
+        5)
+            echo -e "\n${WHITE}${BOLD}Branches disponibles :${NC}"
+            git branch
+            read_input "Nom de la branche à supprimer" branch_name
+            [ $? -eq 0 ] && git branch -d "$branch_name"
+            ;;
+        r|R) return 0 ;;
+        *) error_msg "Option invalide" ;;
+    esac
+}
+
+# Fonction pour synchroniser les changements
+function sync_changes() {
+    print_section_title "Synchronisation"
+    echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+    print_menu_option "1" "Push les changements"
+    print_menu_option "2" "Pull les changements"
+    print_menu_option "3" "Voir le statut de synchronisation"
+    print_menu_option "r" "Retour"
+    echo
+
+    read_input "Choisissez une option" choice
+    case $choice in
+        1) push_changes ;;
+        2) git pull ;;
+        3) git status ;;
+        r|R) return 0 ;;
+        *) error_msg "Option invalide" ;;
+    esac
+}
+
+# Fonction pour voir l'historique
+function view_history() {
+    print_section_title "Historique"
+    echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+    print_menu_option "1" "Voir tous les commits"
+    print_menu_option "2" "Voir les derniers commits"
+    print_menu_option "3" "Chercher dans l'historique"
+    print_menu_option "r" "Retour"
+    echo
+
+    read_input "Choisissez une option" choice
+    case $choice in
+        1) git log --oneline --graph --all ;;
+        2) git log -n 5 --oneline ;;
+        3)
+            read_input "Terme à rechercher" search_term
+            [ $? -eq 0 ] && git log --grep="$search_term"
+            ;;
+        r|R) return 0 ;;
+        *) error_msg "Option invalide" ;;
+    esac
+}
+
+# Fonction pour configurer Git
+function configure_git() {
+    print_section_title "Configuration Git"
+    echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+    print_menu_option "1" "Voir la configuration actuelle"
+    print_menu_option "2" "Configurer le nom d'utilisateur"
+    print_menu_option "3" "Configurer l'email"
+    print_menu_option "4" "Éditer .gitignore"
+    print_menu_option "r" "Retour"
+    echo
+
+    read_input "Choisissez une option" choice
+    case $choice in
+        1) git config --list ;;
+        2)
+            read_input "Nouveau nom d'utilisateur" username
+            [ $? -eq 0 ] && git config --global user.name "$username"
+            ;;
+        3)
+            read_input "Nouvel email" email
+            [ $? -eq 0 ] && git config --global user.email "$email"
+            ;;
+        4) ${EDITOR:-nano} .gitignore ;;
+        r|R) return 0 ;;
+        *) error_msg "Option invalide" ;;
+    esac
+}
+
+# Fonction pour afficher l'aide
+function show_help() {
+    print_section_title "Aide GFast"
+    cat << EOF
+${WHITE}${BOLD}GFast - Assistant Git Rapide${NC}
+
+${CYAN}${BOLD}Commandes principales :${NC}
+• Initialisation : Créer ou cloner un dépôt Git
+• Fichiers : Ajouter et gérer les fichiers
+• Commit : Créer des commits avec convention
+• Branches : Gérer les branches Git
+• Sync : Synchroniser avec le dépôt distant
+• Historique : Voir et chercher dans l'historique
+• Config : Configurer Git
+
+${YELLOW}${BOLD}Astuces :${NC}
+• Utilisez 'r' pour revenir au menu précédent
+• Utilisez 'q' pour quitter le programme
+• Les options par défaut sont indiquées entre []
+
+${GREEN}${BOLD}Pour plus d'aide :${NC}
+• Documentation Git : https://git-scm.com/doc
+• Guide Git : https://git-scm.com/book
+EOF
+}
+
+# Fonction principale modifiée
 function main() {
-    # Vérifier si le répertoire est vide (en ignorant .git)
-    if is_directory_empty; then
-        # Si le répertoire est vide, proposer de cloner ou d'initialiser
-        if ! setup_git; then
-            return 1
-        fi
-    elif [ ! -d ".git" ]; then
-        # Si le répertoire n'est pas vide mais pas de .git, proposer d'initialiser
+    if is_directory_empty || [ ! -d ".git" ]; then
         if ! setup_git; then
             return 1
         fi
     fi
     
-    # Ajouter les fichiers
-    if ! add_files; then
-        return 1
-    fi
-    
-    # Créer le commit
-    if ! commit_changes; then
-        return 1
-    fi
-    
-    # Push les changements
-    if ! push_changes; then
-        return 1
-    fi
-    
-    success_msg "Opération terminée avec succès!"
+    show_main_menu
     return 0
 }
 
