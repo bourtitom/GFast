@@ -53,7 +53,6 @@ download_from_github() {
     echo "Téléchargement depuis $repo_url..."
     if git clone --depth 1 "$repo_url" "$TEMP_DIR/repo"; then
         success "Téléchargement réussi ✓"
-        cd "$TEMP_DIR/repo" || exit 1
     else
         error "Impossible de télécharger depuis GitHub"
         exit 1
@@ -103,8 +102,6 @@ install_script() {
     # Copier le script
     if [ -f "gfast" ]; then
         sudo cp gfast "$script_path"
-    else
-        sudo cp git_push.sh "$script_path"
     fi
     sudo chmod +x "$script_path"
     
@@ -175,7 +172,6 @@ main() {
     # Si on installe depuis GitHub
     if [ "$1" = "github" ]; then
         download_from_github "$GITHUB_REPO"
-        cd "$TEMP_DIR/repo" || exit 1
     fi
     
     # Installation
