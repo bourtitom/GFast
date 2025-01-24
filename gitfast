@@ -1,0 +1,377 @@
+#!/bin/bash
+
+# Couleurs pour les messages
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m' # No Color
+
+# Fonction pour afficher les messages d'erreur
+function error_msg() {
+    echo -e "${RED}Erreur: $1${NC}"
+}
+
+# Fonction pour afficher les messages de succès
+function success_msg() {
+    echo -e "${GREEN}Succès: $1${NC}"
+}
+
+# Fonction pour afficher les avertissements
+function warning_msg() {
+    echo -e "${YELLOW}Attention: $1${NC}"
+}
+
+# Fonction pour vérifier si une commande a réussi
+function check_command() {
+    if [ $? -ne 0 ]; then
+        error_msg "$1"
+        return 1
+    fi
+    return 0
+}
+
+# Fonction pour lire l'entrée avec option de retour
+function read_input() {
+    local prompt=$1
+    local var_name=$2
+    while true; do
+        read -p "$prompt (r pour retour): " input
+        if [ "$input" = "r" ]; then
+            return 1
+        fi
+        eval "$var_name='$input'"
+        return 0
+    done
+}
+
+# Fonction pour initialiser Git si nécessaire
+function init_git() {
+    if [ ! -d ".git" ]; then
+        echo "Aucun dépôt Git trouvé. Initialisation..."
+        git init
+        if ! check_command "Impossible d'initialiser le dépôt Git."; then
+            return 1
+        fi
+        success_msg "Dépôt Git initialisé avec succès."
+        
+        while true; do
+            read_input "Voulez-vous configurer un remote? (oui/non) [oui]" config_remote
+            if [ $? -eq 1 ]; then
+                return 1
+            fi
+            config_remote=${config_remote:-oui}
+            
+            if [ "$config_remote" == "oui" ]; then
+                read_input "Entrez l'URL du remote (ex: https://github.com/user/repo.git)" remote_url
+                if [ $? -eq 1 ]; then
+                    continue
+                fi
+                
+                # Vérifier si le remote existe déjà
+                if git remote | grep -q "^origin$"; then
+                    warning_msg "Le remote 'origin' existe déjà."
+                    read_input "Voulez-vous le remplacer? (oui/non)" replace_remote
+                    if [ $? -eq 1 ]; then
+                        continue
+                    fi
+                    if [ "$replace_remote" = "oui" ]; then
+                        git remote remove origin
+                    else
+                        continue
+                    fi
+                fi
+                
+                git remote add origin "$remote_url"
+                if ! check_command "Impossible d'ajouter le remote."; then
+                    continue
+                fi
+                success_msg "Remote configuré avec succès."
+            fi
+            break
+        done
+    fi
+    return 0
+}
+
+# Fonction pour vérifier les modifications
+function check_changes() {
+    if [ -z "$(git status --porcelain)" ]; then
+        error_msg "Aucune modification à commiter."
+        return 1
+    fi
+    return 0
+}
+
+# Fonction pour ajouter les fichiers
+function add_files() {
+    # Vérifier si on est dans un repo git
+    if [ ! -d ".git" ]; then
+        error_msg "Pas de dépôt Git trouvé."
+        return 1
+    fi
+
+    # Vérifier s'il y a des modifications
+    if ! check_changes; then
+        return 1
+    fi
+
+    while true; do
+        echo "Que voulez-vous ajouter ?"
+        echo "1. Tout ajouter (git add .)"
+        echo "2. Sélectionner des fichiers spécifiques"
+        read_input "Choisissez une option (1/2)" option
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+
+        if [ "$option" = "1" ]; then
+            git add .
+            if ! check_command "Impossible d'ajouter les fichiers."; then
+                continue
+            fi
+            success_msg "Tous les fichiers ont été ajoutés."
+            break
+        elif [ "$option" = "2" ]; then
+            echo "Voici les fichiers modifiés:"
+            git status -s
+            read_input "Entrez les numéros des fichiers à ajouter (ex: 1 2 3)" files
+            if [ $? -eq 1 ]; then
+                continue
+            fi
+            
+            # Vérifier si la sélection est valide
+            total_files=$(git status -s | wc -l)
+            for file in $files; do
+                if ! [[ "$file" =~ ^[0-9]+$ ]] || [ "$file" -gt "$total_files" ] || [ "$file" -lt 1 ]; then
+                    error_msg "Sélection invalide: $file"
+                    continue 2
+                fi
+            done
+            
+            for file in $files; do
+                file_path=$(sed -n "${file}p" <<< "$(git status -s | cut -c4-)")
+                git add "$file_path"
+                if ! check_command "Impossible d'ajouter le fichier: $file_path"; then
+                    continue 2
+                fi
+            done
+            success_msg "Les fichiers sélectionnés ont été ajoutés."
+            break
+        else
+            error_msg "Option invalide."
+            continue
+        fi
+    done
+    return 0
+}
+
+# Fonction pour vérifier si les fichiers sont stagés
+function check_staged() {
+    if [ -z "$(git diff --cached --name-only)" ]; then
+        error_msg "Aucun fichier n'est stagé pour le commit."
+        return 1
+    fi
+    return 0
+}
+
+# Fonction pour choisir le type de commit
+function choose_commit_type() {
+    while true; do
+        echo "Choisissez le type de votre commit :"
+        echo "1. feat : Nouvelle fonctionnalité"
+        echo "2. fix : Correction de bug"
+        echo "3. docs : Modification de la documentation"
+        echo "4. style : Formatage du code"
+        echo "5. refactor : Restructuration du code"
+        echo "6. test : Ajout ou modification de tests"
+        echo "7. chore : Tâches diverses"
+        
+        read_input "Choisissez une option (1/2/3/4/5/6/7)" commit_type
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+        
+        case $commit_type in
+            1) type="feat" ;;
+            2) type="fix" ;;
+            3) type="docs" ;;
+            4) type="style" ;;
+            5) type="refactor" ;;
+            6) type="test" ;;
+            7) type="chore" ;;
+            *) 
+                error_msg "Option invalide."
+                continue
+                ;;
+        esac
+
+        read_input "Entrez le nom de la fonctionnalité/scope" scope
+        if [ $? -eq 1 ]; then
+            continue
+        fi
+        
+        # Vérifier que le scope n'est pas vide
+        if [ -z "$scope" ]; then
+            error_msg "Le scope ne peut pas être vide."
+            continue
+        fi
+        
+        break
+    done
+    return 0
+}
+
+# Fonction pour commit
+function commit_changes() {
+    # Vérifier si des fichiers sont stagés
+    if ! check_staged; then
+        return 1
+    fi
+
+    while true; do
+        choose_commit_type
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+
+        read_input "Entrez une description pour votre commit" description
+        if [ $? -eq 1 ]; then
+            continue
+        fi
+        
+        # Vérifier que la description n'est pas vide
+        if [ -z "$description" ]; then
+            error_msg "La description ne peut pas être vide."
+            continue
+        fi
+
+        commit_message="$type($scope) $description"
+        git commit -m "$commit_message"
+        if ! check_command "Impossible de créer le commit."; then
+            continue
+        fi
+        success_msg "Commit effectué : $commit_message"
+        break
+    done
+    return 0
+}
+
+# Fonction pour vérifier si le remote existe
+function check_remote() {
+    if ! git remote get-url origin >/dev/null 2>&1; then
+        error_msg "Aucun remote 'origin' configuré."
+        return 1
+    fi
+    return 0
+}
+
+# Fonction pour push
+function push_changes() {
+    # Vérifier si le remote existe
+    if ! check_remote; then
+        return 1
+    }
+
+    # Vérifier s'il y a des commits à pousser
+    if [ -z "$(git log @{u}..@ 2>/dev/null)" ]; then
+        warning_msg "Aucun commit à pousser."
+        return 0
+    fi
+
+    while true; do
+        read_input "Voulez-vous push vos changements ? (oui/non) [oui]" push_option
+        if [ $? -eq 1 ]; then
+            return 1
+        fi
+        push_option=${push_option:-oui}
+
+        if [ "$push_option" = "oui" ]; then
+            # Tenter de push
+            git push 2>/tmp/git_push_error
+            if ! check_command "$(cat /tmp/git_push_error)"; then
+                warning_msg "Erreur lors du push. Voulez-vous :"
+                echo "1. Réessayer"
+                echo "2. Pull puis Push"
+                echo "3. Force Push (DANGER)"
+                read_input "Choisissez une option (1/2/3)" error_option
+                if [ $? -eq 1 ]; then
+                    continue
+                fi
+                
+                case $error_option in
+                    1) continue ;;
+                    2)
+                        git pull --rebase
+                        if ! check_command "Impossible de pull les changements."; then
+                            continue
+                        fi
+                        git push
+                        if ! check_command "Impossible de push après le pull."; then
+                            continue
+                        fi
+                        ;;
+                    3)
+                        warning_msg "Le force push est dangereux et peut écraser l'historique distant!"
+                        read_input "Êtes-vous vraiment sûr ? (oui/non)" force_confirm
+                        if [ "$force_confirm" = "oui" ]; then
+                            git push --force
+                            if ! check_command "Impossible de force push."; then
+                                continue
+                            fi
+                        else
+                            continue
+                        fi
+                        ;;
+                    *)
+                        error_msg "Option invalide."
+                        continue
+                        ;;
+                esac
+            fi
+            success_msg "Modifications poussées avec succès."
+            break
+        elif [ "$push_option" = "non" ]; then
+            warning_msg "Aucune modification poussée."
+            break
+        else
+            error_msg "Option invalide."
+            continue
+        fi
+    done
+    return 0
+}
+
+# Main
+function main() {
+    # Vérifier si git est installé
+    if ! command -v git >/dev/null 2>&1; then
+        error_msg "Git n'est pas installé sur votre système."
+        exit 1
+    }
+
+    while true; do
+        init_git
+        if [ $? -eq 1 ]; then
+            continue
+        fi
+        
+        add_files
+        if [ $? -eq 1 ]; then
+            continue
+        fi
+        
+        commit_changes
+        if [ $? -eq 1 ]; then
+            continue
+        fi
+        
+        push_changes
+        if [ $? -eq 1 ]; then
+            continue
+        fi
+        
+        break
+    done
+}
+
+main
