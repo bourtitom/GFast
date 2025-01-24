@@ -751,18 +751,129 @@ function manage_ssh() {
     esac
 }
 
-# Fonction principale modifiée
+# Fonction pour afficher l'aide rapide
+function show_quick_help() {
+    cat << EOF
+${WHITE}${BOLD}GFast - Commandes rapides${NC}
+
+${CYAN}${BOLD}Usage :${NC} gf [commande] [options]
+
+${CYAN}${BOLD}Commandes :${NC}
+  ${GREEN}-h, --help${NC}     Afficher cette aide
+  ${GREEN}-i, --init${NC}     Initialiser un dépôt Git
+  ${GREEN}-c, --clone${NC}    Cloner un dépôt (ex: gf -c URL)
+  ${GREEN}-a, --add${NC}      Ajouter tous les fichiers
+  ${GREEN}-cm${NC}           Commit rapide (ex: gf -cm "message")
+  ${GREEN}-p, --push${NC}     Push les changements
+  ${GREEN}-s, --sync${NC}     Pull puis Push
+  ${GREEN}-b${NC}            Créer et changer de branche (ex: gf -b nom_branche)
+  ${GREEN}-m${NC}            Menu interactif complet
+
+${CYAN}${BOLD}Exemples :${NC}
+  gf -a -cm "fix: correction de bug" -p    Ajouter, commit et push
+  gf -s                                    Synchroniser (pull + push)
+  gf -b feature/new                        Créer et aller sur une nouvelle branche
+EOF
+}
+
+# Fonction pour faire un commit rapide
+function quick_commit() {
+    local message=$1
+    git add .
+    git commit -m "$message"
+}
+
+# Fonction pour synchroniser rapidement
+function quick_sync() {
+    git pull && git push
+}
+
+# Fonction principale modifiée pour gérer les arguments
 function main() {
-    if is_directory_empty || [ ! -d ".git" ]; then
-        if ! setup_git; then
-            return 1
+    # Si aucun argument, lancer le menu interactif
+    if [ $# -eq 0 ]; then
+        if is_directory_empty || [ ! -d ".git" ]; then
+            if ! setup_git; then
+                return 1
+            fi
         fi
+        show_main_menu
+        return 0
     fi
-    
-    show_main_menu
+
+    # Traiter les arguments
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -h|--help)
+                show_quick_help
+                return 0
+                ;;
+            -i|--init)
+                git init
+                create_gitignore
+                success_msg "Dépôt Git initialisé"
+                shift
+                ;;
+            -c|--clone)
+                if [ -n "$2" ]; then
+                    git clone "$2" .
+                    success_msg "Repository cloné avec succès"
+                    shift 2
+                else
+                    error_msg "URL manquante pour le clone"
+                    return 1
+                fi
+                ;;
+            -a|--add)
+                git add .
+                success_msg "Fichiers ajoutés"
+                shift
+                ;;
+            -cm)
+                if [ -n "$2" ]; then
+                    quick_commit "$2"
+                    success_msg "Commit créé"
+                    shift 2
+                else
+                    error_msg "Message de commit manquant"
+                    return 1
+                fi
+                ;;
+            -p|--push)
+                git push
+                success_msg "Push effectué"
+                shift
+                ;;
+            -s|--sync)
+                quick_sync
+                success_msg "Synchronisation effectuée"
+                shift
+                ;;
+            -b)
+                if [ -n "$2" ]; then
+                    git checkout -b "$2"
+                    success_msg "Branche '$2' créée et activée"
+                    shift 2
+                else
+                    error_msg "Nom de branche manquant"
+                    return 1
+                fi
+                ;;
+            -m)
+                show_main_menu
+                return 0
+                ;;
+            *)
+                error_msg "Option invalide: $1"
+                show_quick_help
+                return 1
+                ;;
+        esac
+    done
+
     return 0
 }
 
-# Lancer le script
+# Lancer le script avec les arguments
 print_logo
-main
+main "$@"
