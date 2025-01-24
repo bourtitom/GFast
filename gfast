@@ -9,7 +9,30 @@ MAGENTA='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
 BOLD='\033[1m'
+DIM='\033[2m'
+ITALIC='\033[3m'
+UNDERLINE='\033[4m'
 NC='\033[0m'
+
+# Symboles
+CHECK="✓"
+CROSS="✗"
+ARROW="➜"
+DOT="•"
+STAR="★"
+DIAMOND="♦"
+
+# Fonction pour afficher un titre de section
+function print_section_title() {
+    local title=$1
+    local width=50
+    local padding=$(( (width - ${#title}) / 2 ))
+    echo
+    echo -e "${CYAN}╭$(printf '─%.0s' $(seq 1 $width))╮${NC}"
+    echo -e "${CYAN}│${NC}$(printf ' %.0s' $(seq 1 $padding))${BOLD}${WHITE}${title}${NC}$(printf ' %.0s' $(seq 1 $((padding + (width - ${#title}) % 2))))${CYAN}│${NC}"
+    echo -e "${CYAN}╰$(printf '─%.0s' $(seq 1 $width))╯${NC}"
+    echo
+}
 
 # Logo ASCII avec couleurs et cadre
 function print_logo() {
@@ -26,22 +49,32 @@ function print_logo() {
     echo
 }
 
-# Afficher le logo au démarrage
-print_logo
+# Fonction pour afficher une option de menu
+function print_menu_option() {
+    local number=$1
+    local text=$2
+    local default=$3
+    echo -e "${CYAN}${STAR}${NC} ${BOLD}${number}.${NC} ${text}${default:+ ${DIM}[${default}]${NC}}"
+}
 
 # Fonction pour afficher les messages d'erreur
 function error_msg() {
-    echo -e "${RED}Erreur: $1${NC}"
+    echo -e "\n${RED}${CROSS} Erreur: ${BOLD}$1${NC}\n"
 }
 
 # Fonction pour afficher les messages de succès
 function success_msg() {
-    echo -e "${GREEN}Succès: $1${NC}"
+    echo -e "\n${GREEN}${CHECK} Succès: ${BOLD}$1${NC}\n"
 }
 
 # Fonction pour afficher les avertissements
 function warning_msg() {
-    echo -e "${YELLOW}Attention: $1${NC}"
+    echo -e "\n${YELLOW}${DOT} Attention: ${BOLD}$1${NC}\n"
+}
+
+# Fonction pour afficher les informations
+function info_msg() {
+    echo -e "\n${BLUE}${ARROW} Info: ${BOLD}$1${NC}\n"
 }
 
 # Fonction pour vérifier si une commande a réussi
@@ -108,9 +141,12 @@ function init_git() {
     create_gitignore
     
     while true; do
-        echo "Voulez-vous configurer un remote ?"
-        echo "1. Oui [défaut]"
-        echo "2. Non"
+        print_section_title "Configuration du Remote"
+        echo -e "${WHITE}${BOLD}Voulez-vous configurer un remote ?${NC}\n"
+        print_menu_option "1" "Oui" "défaut"
+        print_menu_option "2" "Non"
+        echo
+        
         read_input "Choisissez une option (1/2)" config_remote
         if [ $? -eq 1 ]; then
             return 1
@@ -127,9 +163,11 @@ function init_git() {
             # Vérifier si le remote existe déjà
             if git remote | grep -q "^origin$"; then
                 warning_msg "Le remote 'origin' existe déjà."
-                echo "Voulez-vous le remplacer ?"
-                echo "1. Oui"
-                echo "2. Non"
+                echo -e "\n${WHITE}${BOLD}Voulez-vous le remplacer ?${NC}\n"
+                print_menu_option "1" "Oui"
+                print_menu_option "2" "Non"
+                echo
+                
                 read_input "Choisissez une option (1/2)" replace_remote
                 if [ $? -eq 1 ]; then
                     continue
@@ -154,9 +192,12 @@ function init_git() {
 
 # Fonction pour gérer l'initialisation ou le clonage
 function setup_git() {
-    echo "Que souhaitez-vous faire ?"
-    echo "1. Cloner un repository"
-    echo "2. Initialiser un nouveau dépôt Git [défaut]"
+    print_section_title "Configuration Git"
+    echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+    print_menu_option "1" "Cloner un repository"
+    print_menu_option "2" "Initialiser un nouveau dépôt Git" "défaut"
+    echo
+    
     read_input "Choisissez une option (1/2)" choice
     if [ $? -eq 1 ]; then
         return 1
@@ -184,7 +225,7 @@ function check_changes() {
 function add_files() {
     # Vérifier si on est dans un repo git
     if [ ! -d ".git" ]; then
-        error_msg "Pas de dépôt Git trouvé."
+        error_msg "Pas de dépôt Git trouvé"
         return 1
     fi
 
@@ -194,27 +235,32 @@ function add_files() {
     fi
 
     while true; do
-        echo "Que voulez-vous ajouter ?"
-        echo "1. Tout ajouter (git add .) [défaut]"
-        echo "2. Sélectionner des fichiers spécifiques"
+        print_section_title "Ajout de fichiers"
+        echo -e "${WHITE}${BOLD}Que voulez-vous ajouter ?${NC}\n"
+        print_menu_option "1" "Tout ajouter (git add .)" "défaut"
+        print_menu_option "2" "Sélectionner des fichiers spécifiques"
+        echo
+        
         read_input "Choisissez une option (1/2)" option
         if [ $? -eq 1 ]; then
             return 1
         fi
         
-        # Si l'option est vide, utiliser l'option 1 par défaut
         option=${option:-1}
 
         if [ "$option" = "1" ]; then
+            info_msg "Ajout de tous les fichiers..."
             git add .
             if ! check_command "Impossible d'ajouter les fichiers."; then
                 continue
             fi
-            success_msg "Tous les fichiers ont été ajoutés."
+            success_msg "Tous les fichiers ont été ajoutés"
             break
         elif [ "$option" = "2" ]; then
-            echo "Voici les fichiers modifiés:"
-            git status -s
+            echo -e "\n${WHITE}${BOLD}Voici les fichiers modifiés:${NC}"
+            echo -e "${DIM}$(git status -s)${NC}"
+            echo
+            
             read_input "Entrez les numéros des fichiers à ajouter (ex: 1 2 3)" files
             if [ $? -eq 1 ]; then
                 continue
@@ -231,15 +277,16 @@ function add_files() {
             
             for file in $files; do
                 file_path=$(sed -n "${file}p" <<< "$(git status -s | cut -c4-)")
+                info_msg "Ajout de $file_path..."
                 git add "$file_path"
                 if ! check_command "Impossible d'ajouter le fichier: $file_path"; then
                     continue 2
                 fi
             done
-            success_msg "Les fichiers sélectionnés ont été ajoutés."
+            success_msg "Les fichiers sélectionnés ont été ajoutés"
             break
         else
-            error_msg "Option invalide."
+            error_msg "Option invalide"
             continue
         fi
     done
@@ -258,14 +305,16 @@ function check_staged() {
 # Fonction pour choisir le type de commit
 function choose_commit_type() {
     while true; do
-        echo "Choisissez le type de votre commit :"
-        echo "1. feat : Nouvelle fonctionnalité"
-        echo "2. fix : Correction de bug"
-        echo "3. docs : Modification de la documentation"
-        echo "4. style : Formatage du code"
-        echo "5. refactor : Restructuration du code"
-        echo "6. test : Ajout ou modification de tests"
-        echo "7. chore : Tâches diverses"
+        print_section_title "Type de Commit"
+        echo -e "${WHITE}${BOLD}Choisissez le type de votre commit :${NC}\n"
+        print_menu_option "1" "${MAGENTA}feat${NC} : Nouvelle fonctionnalité"
+        print_menu_option "2" "${RED}fix${NC} : Correction de bug"
+        print_menu_option "3" "${BLUE}docs${NC} : Modification de la documentation"
+        print_menu_option "4" "${CYAN}style${NC} : Formatage du code"
+        print_menu_option "5" "${YELLOW}refactor${NC} : Restructuration du code"
+        print_menu_option "6" "${GREEN}test${NC} : Ajout ou modification de tests"
+        print_menu_option "7" "${WHITE}chore${NC} : Tâches diverses"
+        echo
         
         read_input "Choisissez une option (1/2/3/4/5/6/7)" commit_type
         if [ $? -eq 1 ]; then
@@ -280,7 +329,7 @@ function choose_commit_type() {
             5) type="refactor" ;;
             6) type="test" ;;
             7) type="chore" ;;
-            *) error_msg "Option invalide." ; continue ;;
+            *) error_msg "Option invalide" ; continue ;;
         esac
         
         read_input "Entrez le scope (optionnel, appuyez sur Entrée pour ignorer)" scope
@@ -349,11 +398,13 @@ function push_changes() {
             return 0
         else
             # En cas d'erreur, proposer des options
-            echo "Erreur lors du push. Que voulez-vous faire ?"
-            echo "1. Réessayer"
-            echo "2. Pull puis Push (avec rebase)"
-            echo "3. Force Push (ATTENTION: peut écraser les changements distants)"
-            echo "4. Annuler"
+            print_section_title "Erreur de Push"
+            echo -e "${WHITE}${BOLD}Erreur lors du push. Que voulez-vous faire ?${NC}\n"
+            print_menu_option "1" "Réessayer"
+            print_menu_option "2" "Pull puis Push (avec rebase)"
+            print_menu_option "3" "Force Push (ATTENTION: peut écraser les changements distants)"
+            print_menu_option "4" "Annuler"
+            echo
             
             read_input "Choisissez une option (1/2/3/4)" push_option
             if [ $? -eq 1 ]; then
@@ -428,4 +479,5 @@ function main() {
 }
 
 # Lancer le script
+print_logo
 main
