@@ -51,9 +51,9 @@ download_from_github() {
     mkdir -p "$TEMP_DIR"
     
     echo "Téléchargement depuis $repo_url..."
-    if git clone --depth 1 "$repo_url" "$TEMP_DIR"; then
+    if git clone --depth 1 "$repo_url" "$TEMP_DIR/repo"; then
         success "Téléchargement réussi ✓"
-        cd "$TEMP_DIR" || exit 1
+        cd "$TEMP_DIR/repo" || exit 1
     else
         error "Impossible de télécharger depuis GitHub"
         exit 1
@@ -175,7 +175,7 @@ main() {
     # Si on installe depuis GitHub
     if [ "$1" = "github" ]; then
         download_from_github "$GITHUB_REPO"
-        cd "$TEMP_DIR" || exit 1
+        cd "$TEMP_DIR/repo" || exit 1
     fi
     
     # Installation
