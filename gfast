@@ -17,17 +17,22 @@ DOT="•"
 
 # Fonction pour afficher les messages d'erreur
 function error_msg() {
-    echo -e "${RED}Erreur: $1${NC}"
+    echo -e "${RED}${CROSS} Erreur: $1${NC}"
 }
 
 # Fonction pour afficher les messages de succès
 function success_msg() {
-    echo -e "${GREEN}Succès: $1${NC}"
+    echo -e "${GREEN}${CHECK} $1${NC}"
 }
 
 # Fonction pour afficher les avertissements
 function warning_msg() {
-    echo -e "${YELLOW}Attention: $1${NC}"
+    echo -e "${YELLOW}${DOT} $1${NC}"
+}
+
+# Fonction pour afficher les informations
+function info_msg() {
+    echo -e "${BLUE}${ARROW} $1${NC}"
 }
 
 # Fonction pour afficher les informations
@@ -66,7 +71,7 @@ function create_gitignore() {
 *.log
 *.tmp
 EOL
-        success_msg "Fichier .gitignore créé avec les règles par défaut."
+        success_msg "Fichier .gitignore créé avec les règles par défaut"
     fi
 }
 
@@ -82,7 +87,7 @@ function clone_repository() {
     if ! check_command "Impossible de cloner le repository."; then
         return 1
     fi
-    success_msg "Repository cloné avec succès."
+    success_msg "Repository cloné avec succès"
     create_gitignore
     return 0
 }
@@ -94,7 +99,7 @@ function init_git() {
     if ! check_command "Impossible d'initialiser le dépôt Git."; then
         return 1
     fi
-    success_msg "Dépôt Git initialisé avec succès."
+    success_msg "Dépôt Git initialisé avec succès"
     
     # Créer le .gitignore
     create_gitignore
@@ -118,7 +123,7 @@ function init_git() {
             
             # Vérifier si le remote existe déjà
             if git remote | grep -q "^origin$"; then
-                warning_msg "Le remote 'origin' existe déjà."
+                warning_msg "Le remote 'origin' existe déjà"
                 echo "Voulez-vous le remplacer ?"
                 echo "${CYAN}1.${NC} Oui"
                 echo "${CYAN}2.${NC} Non"
@@ -138,7 +143,7 @@ function init_git() {
             if ! check_command "Impossible d'ajouter le remote."; then
                 continue
             fi
-            success_msg "Remote configuré avec succès."
+            success_msg "Remote configuré avec succès"
         fi
         break
     done
@@ -167,7 +172,7 @@ function setup_git() {
 # Fonction pour vérifier les modifications
 function check_changes() {
     if [ -z "$(git status --porcelain)" ]; then
-        error_msg "Aucune modification à commiter."
+        error_msg "Aucune modification à commiter"
         return 1
     fi
     return 0
@@ -177,7 +182,7 @@ function check_changes() {
 function add_files() {
     # Vérifier si on est dans un repo git
     if [ ! -d ".git" ]; then
-        error_msg "Pas de dépôt Git trouvé."
+        error_msg "Pas de dépôt Git trouvé"
         return 1
     fi
 
@@ -204,7 +209,7 @@ function add_files() {
             if ! check_command "Impossible d'ajouter les fichiers."; then
                 continue
             fi
-            success_msg "Tous les fichiers ont été ajoutés."
+            success_msg "Tous les fichiers ont été ajoutés"
             break
         elif [ "$option" = "2" ]; then
             echo "Voici les fichiers modifiés:"
@@ -231,10 +236,10 @@ function add_files() {
                     continue 2
                 fi
             done
-            success_msg "Les fichiers sélectionnés ont été ajoutés."
+            success_msg "Les fichiers sélectionnés ont été ajoutés"
             break
         else
-            error_msg "Option invalide."
+            error_msg "Option invalide"
             continue
         fi
     done
@@ -244,7 +249,7 @@ function add_files() {
 # Fonction pour vérifier si les fichiers sont stagés
 function check_staged() {
     if [ -z "$(git diff --cached --name-only)" ]; then
-        error_msg "Aucun fichier n'est stagé pour le commit."
+        error_msg "Aucun fichier n'est stagé pour le commit"
         return 1
     fi
     return 0
@@ -275,7 +280,7 @@ function choose_commit_type() {
             5) type="refactor" ;;
             6) type="test" ;;
             7) type="chore" ;;
-            *) error_msg "Option invalide." ; continue ;;
+            *) error_msg "Option invalide" ; continue ;;
         esac
         
         read_input "Entrez le scope (optionnel, appuyez sur Entrée pour ignorer)" scope
@@ -318,14 +323,14 @@ function commit_changes() {
         return 1
     fi
     
-    success_msg "Commit créé avec succès."
+    success_msg "Commit créé avec succès"
     return 0
 }
 
 # Fonction pour vérifier si le remote existe
 function check_remote() {
     if ! git remote | grep -q "^origin$"; then
-        error_msg "Aucun remote 'origin' configuré."
+        error_msg "Aucun remote 'origin' configuré"
         return 1
     fi
     return 0
@@ -342,7 +347,7 @@ function push_changes() {
         # Essayer de push
         info_msg "Push en cours..."
         if git push origin HEAD; then
-            success_msg "Push réussi."
+            success_msg "Push réussi"
             return 0
         else
             # En cas d'erreur, proposer des options
@@ -377,11 +382,11 @@ function push_changes() {
                     if ! check_command "Force push échoué."; then
                         continue
                     fi
-                    success_msg "Force push réussi."
+                    success_msg "Force push réussi"
                     return 0
                     ;;
                 4) return 1 ;;
-                *) error_msg "Option invalide." ; continue ;;
+                *) error_msg "Option invalide" ; continue ;;
             esac
         fi
     done
