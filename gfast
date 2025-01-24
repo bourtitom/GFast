@@ -117,12 +117,15 @@ function add_files() {
 
     while true; do
         echo "Que voulez-vous ajouter ?"
-        echo "1. Tout ajouter (git add .)"
+        echo "1. Tout ajouter (git add .) [défaut]"
         echo "2. Sélectionner des fichiers spécifiques"
         read_input "Choisissez une option (1/2)" option
         if [ $? -eq 1 ]; then
             return 1
         fi
+        
+        # Si l'option est vide, utiliser l'option 1 par défaut
+        option=${option:-1}
 
         if [ "$option" = "1" ]; then
             git add .

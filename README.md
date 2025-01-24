@@ -35,6 +35,11 @@ echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
 ```
 
+Ou utilisez la commande d'installation curl :
+```bash
+curl -fsSL https://raw.githubusercontent.com/bourtitom/GFast/main/install.sh | sudo bash -s github
+```
+
 ## 🎯 Utilisation
 
 1. Naviguez vers n'importe quel projet
