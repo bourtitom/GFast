@@ -171,7 +171,7 @@ main() {
     # Si on installe depuis GitHub
     if [ "$1" = "github" ]; then
         download_from_github "$GITHUB_REPO"
-        cd script/git_push || exit 1
+        cd "$TEMP_DIR" || exit 1
     fi
     
     # Installation
@@ -179,7 +179,6 @@ main() {
     install_script
     install_completion
     install_docs
-    configure_path
     
     # Nettoyage si installation depuis GitHub
     if [ "$1" = "github" ]; then
