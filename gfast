@@ -114,18 +114,77 @@ EOL
 
 # Fonction pour cloner un repository
 function clone_repository() {
-    read_input "Entrez l'URL du repository à cloner" clone_url
-    if [ $? -eq 1 ]; then
-        return 1
-    fi
-    
-    git clone "$clone_url" .
-    if ! check_command "Impossible de cloner le repository."; then
-        return 1
-    fi
-    success_msg "Repository cloné avec succès."
-    create_gitignore
-    return 0
+    while true; do
+        read_input "Entrez l'URL du repository à cloner (r pour retour)" clone_url
+        if [ $? -eq 1 ] || [[ "$clone_url" == "r" || "$clone_url" == "R" ]]; then
+            return 1
+        fi
+
+        # Vérifier si le répertoire est vide
+        if ! is_directory_empty; then
+            print_section_title "Le répertoire n'est pas vide"
+            echo -e "${WHITE}${BOLD}Que souhaitez-vous faire ?${NC}\n"
+            print_menu_option "1" "Cloner dans un sous-dossier"
+            print_menu_option "2" "Choisir un autre dossier"
+            print_menu_option "3" "Forcer le clonage (peut écraser des fichiers)"
+            print_menu_option "r" "Retour"
+            echo
+
+            read_input "Votre choix" choice
+            if [ $? -eq 1 ] || [[ "$choice" == "r" || "$choice" == "R" ]]; then
+                return 1
+            fi
+
+            case $choice in
+                1)
+                    # Extraire le nom du repo de l'URL
+                    repo_name=$(basename "$clone_url" .git)
+                    if [ ! -d "$repo_name" ]; then
+                        mkdir "$repo_name"
+                    fi
+                    cd "$repo_name"
+                    git clone "$clone_url" .
+                    if check_command "Clonage du repository"; then
+                        success_msg "Repository cloné avec succès dans ./$repo_name"
+                        return 0
+                    fi
+                    ;;
+                2)
+                    read_input "Entrez le chemin du dossier" target_dir
+                    if [ $? -eq 0 ]; then
+                        if [ ! -d "$target_dir" ]; then
+                            mkdir -p "$target_dir"
+                        fi
+                        cd "$target_dir"
+                        git clone "$clone_url" .
+                        if check_command "Clonage du repository"; then
+                            success_msg "Repository cloné avec succès dans $target_dir"
+                            return 0
+                        fi
+                    fi
+                    ;;
+                3)
+                    # Forcer le clonage
+                    git clone --force "$clone_url" .
+                    if check_command "Clonage du repository"; then
+                        success_msg "Repository cloné avec succès"
+                        return 0
+                    fi
+                    ;;
+                *) 
+                    error_msg "Option invalide"
+                    continue
+                    ;;
+            esac
+        else
+            # Le répertoire est vide, on peut cloner directement
+            git clone "$clone_url" .
+            if check_command "Clonage du repository"; then
+                success_msg "Repository cloné avec succès"
+                return 0
+            fi
+        fi
+    done
 }
 
 # Fonction pour initialiser Git si nécessaire
