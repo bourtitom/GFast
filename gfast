@@ -314,9 +314,10 @@ function choose_commit_type() {
         print_menu_option "5" "${YELLOW}refactor${NC} : Restructuration du code"
         print_menu_option "6" "${GREEN}test${NC} : Ajout ou modification de tests"
         print_menu_option "7" "${WHITE}chore${NC} : Tâches diverses"
+        print_menu_option "8" "${WHITE}arch${NC} : Architecture projet"
         echo
         
-        read_input "Choisissez une option (1/2/3/4/5/6/7)" commit_type
+        read_input "Choisissez une option (1-8)" commit_type
         if [ $? -eq 1 ]; then
             return 1
         fi
@@ -329,13 +330,48 @@ function choose_commit_type() {
             5) type="refactor" ;;
             6) type="test" ;;
             7) type="chore" ;;
-            *) error_msg "Option invalide" ; continue ;;
+            8) type="arch" ;;
+            *) error_msg "Option invalide." ; continue ;;
         esac
         
-        read_input "Entrez le scope (optionnel, appuyez sur Entrée pour ignorer)" scope
+        # Menu pour le scope
+        print_section_title "Scope du Commit"
+        echo -e "${WHITE}${BOLD}Choisissez le scope de votre commit (optionnel) :${NC}\n"
+        print_menu_option "1" "api : API et endpoints"
+        print_menu_option "2" "ui : Interface utilisateur"
+        print_menu_option "3" "db : Base de données"
+        print_menu_option "4" "auth : Authentification"
+        print_menu_option "5" "core : Fonctionnalités principales"
+        print_menu_option "6" "config : Configuration"
+        print_menu_option "7" "deps : Dépendances"
+        print_menu_option "8" "tests : Tests"
+        print_menu_option "c" "Personnalisé"
+        print_menu_option "n" "Aucun scope"
+        echo
+        
+        read_input "Choisissez une option (1-8/c/n)" scope_choice
         if [ $? -eq 1 ]; then
             return 1
         fi
+        
+        case $scope_choice in
+            1) scope="api" ;;
+            2) scope="ui" ;;
+            3) scope="db" ;;
+            4) scope="auth" ;;
+            5) scope="core" ;;
+            6) scope="config" ;;
+            7) scope="deps" ;;
+            8) scope="tests" ;;
+            c|C) 
+                read_input "Entrez le scope personnalisé" scope
+                if [ $? -eq 1 ]; then
+                    return 1
+                fi
+                ;;
+            n|N) scope="" ;;
+            *) error_msg "Option invalide." ; continue ;;
+        esac
         
         read_input "Entrez la description du commit" description
         if [ $? -eq 1 ]; then
@@ -344,7 +380,7 @@ function choose_commit_type() {
         
         # Construire le message de commit
         if [ -n "$scope" ]; then
-            commit_msg="$type($scope) $description"
+            commit_msg="$type($scope): $description"
         else
             commit_msg="$type: $description"
         fi
@@ -761,20 +797,7 @@ ${CYAN}${BOLD}Commandes :${NC}
   ${GREEN}gf -s${NC}           Start : Initialiser ou cloner un projet
   ${GREEN}gf -p${NC}           Push : Ajouter, commit et push rapide
   ${GREEN}gf -f${NC}           Fix : Gérer les branches, pull et historique
-  ${GREEN}gf -c${NC}           Config : Gérer la configuration et les clés SSH
-
-${CYAN}${BOLD}Exemples d'utilisation :${NC}
-  ${YELLOW}1. Démarrer un projet :${NC}
-     gf -s
-
-  ${YELLOW}2. Push rapide :${NC}
-     gf -p
-
-  ${YELLOW}3. Fix et maintenance :${NC}
-     gf -f
-
-  ${YELLOW}4. Configuration :${NC}
-     gf -c"
+  ${GREEN}gf -c${NC}           Config : Gérer la configuration et les clés SSH"
 }
 
 # Fonction pour le workflow de push rapide
@@ -786,8 +809,7 @@ function quick_push_workflow() {
 
     # Commit
     print_section_title "Création du commit"
-    read_input "Message du commit" commit_msg
-    if [ $? -eq 0 ]; then
+    if choose_commit_type; then
         git commit -m "$commit_msg"
         success_msg "Commit créé"
 
